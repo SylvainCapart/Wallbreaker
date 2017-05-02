@@ -10,75 +10,75 @@
 using namespace std;
 
 Racket::Racket(int x, int y, ORIENTATION direction) {
-    this->x = x;
-    this->y = y;
+    m_x = x;
+    m_y = y;
 
-    this->direction = direction;
-    if (direction == HORIZONTAL) {
-        this->w = RACKET_WIDTH;
-        this->h = RACKET_HEIGHT;
+    m_direction = direction;
+    if (HORIZONTAL == direction) {
+        m_w = RACKET_WIDTH;
+        m_h = RACKET_HEIGHT;
 
-    } else if (direction == VERTICAL) {
-        this->w = RACKET_HEIGHT;
-        this->h = RACKET_WIDTH;
+    } else {
+        m_w = RACKET_HEIGHT;
+        m_h = RACKET_WIDTH;
 
-    }
-    this->racketCenter.x = this->x + this->w / 2;
-    this->racketCenter.y = this->y + this->h / 2;
+    } 
+    m_racketCenter.x = this->m_x + this->m_w / 2;
+    m_racketCenter.y = this->m_y + this->m_h / 2;
     
-    this->racketSpeed = RACKET_SPEED;
+    m_racketSpeed = RACKET_SPEED;
 }
 
 
 
 void Racket::moveRight() {
-    x = x + racketSpeed;
-    if (x > WINDOW_WIDTH - RACKET_WIDTH)
-        x = WINDOW_WIDTH - RACKET_WIDTH;
+    m_x = m_x + m_racketSpeed;
+    if (m_x > WINDOW_WIDTH - RACKET_WIDTH)
+        m_x = WINDOW_WIDTH - RACKET_WIDTH;
 
-    racketCenter.x = x + w / 2;
-    racketCenter.y = y + h / 2;
+    m_racketCenter.x = m_x + m_w / 2;
+    m_racketCenter.y = m_y + m_h / 2;
     accelerate();
 }
 
 void Racket::moveLeft() {
-    x = x - racketSpeed;
-    if (x < 0)
-        x = 0;
-    racketCenter.x = x + w / 2;
-    racketCenter.y = y + h / 2;
+    m_x = m_x - m_racketSpeed;
+    if (m_x < 0)
+        m_x = 0;
+    m_racketCenter.x = m_x + m_w / 2;
+    m_racketCenter.y = m_y + m_h / 2;
     accelerate();
 }
 
 void Racket::moveDown() {
-    y = y + racketSpeed;
-    if (y > WINDOW_HEIGHT - RACKET_WIDTH)
-        y = WINDOW_HEIGHT - RACKET_WIDTH;
-    racketCenter.x = x + w / 2;
-    racketCenter.y = y + h / 2;
+    m_y = m_y + m_racketSpeed;
+    if (m_y > WINDOW_HEIGHT - RACKET_WIDTH)
+        m_y = WINDOW_HEIGHT - RACKET_WIDTH;
+    m_racketCenter.x = m_x + m_w / 2;
+    m_racketCenter.y = m_y + m_h / 2;
     accelerate();
 }
 
 void Racket::moveUp() {
-    y = y - racketSpeed;
-    if (y < 0)
-        y = 0;
-    racketCenter.x = x + w / 2;
-    racketCenter.y = y + h / 2;
+    m_y = m_y - m_racketSpeed;
+    if (m_y < 0)
+        m_y = 0;
+    m_racketCenter.x = m_x + m_w / 2;
+    m_racketCenter.y = m_y + m_h / 2;
     accelerate();
 }
 
 /* Function : accelerate
  * Input : none
  * Output : none
- * Goal : allows the racket to accelerate until a maximum speed
+ * Goal : allows the racket to accelerate up to a maximum speed
  * 
  */
 
 void Racket::accelerate() {
-    racketSpeed = racketSpeed + RACKET_ACC;
-    if (racketSpeed > MAX_RACKET_SPEED)
-        racketSpeed = MAX_RACKET_SPEED;
+    m_racketSpeed = m_racketSpeed + RACKET_ACC;
+    if (m_racketSpeed > MAX_RACKET_SPEED)
+        m_racketSpeed = MAX_RACKET_SPEED;
 }
 
 /* Function : accelerate
@@ -88,16 +88,16 @@ void Racket::accelerate() {
  */
 
 void Racket::decelerate() {
-    while (racketSpeed > MIN_RACKET_SPEED) {
-        racketSpeed = racketSpeed - RACKET_DEC;
-        if (racketSpeed < MIN_RACKET_SPEED)
-            racketSpeed = MIN_RACKET_SPEED;
+    while (m_racketSpeed > MIN_RACKET_SPEED) {
+        m_racketSpeed = m_racketSpeed - RACKET_DEC;
+        if (m_racketSpeed < MIN_RACKET_SPEED)
+            m_racketSpeed = MIN_RACKET_SPEED;
     }
 }
 
 Point Racket::getRacketCenter() const {
     Point center;
-    center.x = x + w/2;
-    center.y = y + h/2;
+    center.x = m_x + m_w/2;
+    center.y = m_y + m_h/2;
     return center;
 }

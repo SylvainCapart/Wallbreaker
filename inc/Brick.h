@@ -23,38 +23,36 @@
 class Brick {
 public:
 
+    /// \param x : x coordinate of the origin of the SDL_Rect corresponding to the brick
+    /// \param y : y coordinate of the origin of the SDL_Rect corresponding to the brick
+    /// \param resistance : number of times the brick shall be hit before disappearing
     Brick(int x, int y, int resistance);
 
-    void SetResistance(int resistance) {this->resistance = resistance;}
-    int GetResistance() const {return resistance;}
+    /// \goal : getter and setter for m_resistance
+    void SetResistance(int resistance) {this->m_resistance = resistance;}
+    int GetResistance() const {return m_resistance;}
     
+    /// \goal : overriding -- to decrease the brick's resistance
     Brick& operator --() {
-        --this->resistance;
+        --this->m_resistance;
         return *this;
     }
+
+    void SetH(int h) {this->m_h = h;}
+    int GetH() const {return m_h;}
     
-    const SDL_Rect& getRect() const {
-        return m_renderArea;
-    }
+    void SetW(int w) {this->m_w = w;}
+    int GetW() const {return m_w;}
     
-    /* remove all */
-    void SetH(int h) {this->h = h;}
-    int GetH() const {return h;}
+    void SetY(int y) {this->m_y = y;}
+    int GetY() const {return m_y;}
     
-    void SetW(int w) {this->w = w;}
-    int GetW() const {return w;}
-    
-    void SetY(int y) {this->y = y;}
-    int GetY() const {return y;}
-    
-    void SetX(int x) {this->x = x;}
-    int GetX() const {return x;}
+    void SetX(int x) {this->m_x = x;}
+    int GetX() const {return m_x;}
     
 private:
-    // to remove
-    int x, y, w, h; // x and y -> Rectangle origin (not the center of the brick)
-    SDL_Rect m_renderArea;
-    int resistance; // number of times the brick shall be hit before disappearing
+    int m_x, m_y, m_w, m_h; // m_x and m_y -> Rectangle origin (not the center of the brick)
+    int m_resistance; // number of times the brick shall be hit before disappearing
     
 };
 

@@ -156,7 +156,6 @@ SDL_Rect Collision::getBoxAroundCircle(const Circle& C1) {
  * Output : a normalized vector on segment AB, on the point of collision
  * Goal : get a normalized vector at collision point to make the ball bounce on the surface
  * 
- * TODO v0.2 : add some control condition when point A = point B
  */
 
 Vector Collision::getNormal(const Point& A, const Point& B, const Point& C) {
@@ -270,9 +269,9 @@ SegmentPoints Collision::getBrickSegment(const SDL_Rect& obstacle, OBSTACLE_SEGM
  * Example : if the has a speed vector (0, 3) and hits at the top left of the brick,
  * the upper segment of the brick shall be returned, and not the left one.
  * 
- * TODO v0.2 : optimisation
+ * DONE v0.2 : optimisation
  * This is handled also in the ball class for the middle racket. In game.cpp the Collision::rebound() should
- * replace the ball->rebound() function, which will be removed.
+ * replace the ball->rebound() function, which will be removed. DONE
  */
 
 SegmentPoints Collision::rebound(const SDL_Rect & obstacle, const SDL_Rect & rectBall, const Vector & ballSpeed) {
@@ -299,7 +298,6 @@ SegmentPoints Collision::rebound(const SDL_Rect & obstacle, const SDL_Rect & rec
     } else if (rectBallCenter.x >= (obstacle.x + obstacle.w) && rectBallCenter.y <= obstacle.y) 
         // ball is placed at the TOP RIGHT of the brick
     {
-        cout << "TOP RIGHT" << endl;
         if (ballSpeed.x >= 0 && ballSpeed.y > 0)
             AB = getBrickSegment(obstacle, OBSTACLE_TOP);
         else if (ballSpeed.x < 0 && ballSpeed.y <= 0)
@@ -388,7 +386,7 @@ SegmentPoints Collision::rebound(const SDL_Rect & obstacle, const SDL_Rect & rec
 }
 
 /* Function : projectionI
- * Goal : detect a collision between the ball and a brick
+ * Goal : return I, the projection of point C on segment AB
  */
 
 Point Collision::projectionI(const Point& A, const Point& B, const Point& C) {

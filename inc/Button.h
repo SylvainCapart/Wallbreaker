@@ -13,57 +13,54 @@
 #include "Const.h"
 #include "Types.h"
 #include <SDL_ttf.h>
+#include <iostream>
+#include "IDrawable.h"
+#include "Text.h"
 
 
-using namespace std;
 
-class Button {
+class Button : public IDrawable {
 public:
-    Button(const SDL_Rect & buttonRect, SDL_Renderer * renderer, const string & text, 
-            const SDL_Color & textColor ,  TTF_Font & textFont, SDL_Texture * buttonImage[3]);
-
+    
+    /// \param renderer : renderer where the button will be drawn
+    /// \param buttonText : object Text, containing the text we want to display on the button (also a IDrawable)
+    /// \param buttonId : ID of the button
+    /// \param buttonRect : rectangle corresponding to the drawing area of the button
+    /// \param buttonImage : vector of textures (hard value to replace), containing the different images of the button
+    Button(SDL_Renderer * renderer, Text * buttonText, const BUTTON_ID buttonId, const SDL_Rect & buttonRect, SDL_Texture * buttonImage[3]);
+    
     virtual ~Button();
-
-    bool detectSelection(int x, int y) const; // true if (x,y) inside the buttonRect
     
-    void draw(SDL_Renderer * renderer) const;
-
+    /// \param x
+    /// \param y 
+    /// \return : true if (x,y) is in the button rectangle
+    bool detectSelection(int x, int y) const; 
+    
+    /// \goal : drawing of the IDrawable
+    void draw() const;
+    
     void setButtonState(BUTTON_STATE buttonState) {
-        this->buttonState = buttonState;
+        this->m_buttonState = buttonState;
     }
-
     BUTTON_STATE getButtonState() const {
-        return buttonState;
+        return m_buttonState;
     }
-
-    void setText(const std::string & text) {
-        this->text = text;
-    }
-
-    const std::string & getText() const {
-        return text;
-    }
-
     SDL_Rect * getButtonRect() {
-        return & buttonRect;
+        return & m_buttonRect;
     }
-
-    SDL_Rect * getTextRect() {
-        return & textRect;
+    const int getDrawableId() const {
+        return m_buttonId;
     }
-    
-    
 
 private:
-    SDL_Rect buttonRect, textRect;
+    SDL_Rect m_buttonRect;
+    int m_buttonId;
+    SDL_Texture * m_buttonImage[3];
+    BUTTON_STATE m_buttonState;
+    SDL_Renderer * m_renderer;
+    Text * m_buttonText;
+    
 
-    SDL_Color textColor;
-
-    SDL_Texture * buttonImage[3];
-    SDL_Texture * buttonTextTexture;
-    BUTTON_STATE buttonState;
-    std::string text;
-    int textMargin, textOrigin;
 };
 
 #endif	/* BUTTON_H */

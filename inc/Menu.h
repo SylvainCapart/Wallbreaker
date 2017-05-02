@@ -15,35 +15,48 @@
 #include <list>
 #include <vector>
 #include "Button.h"
+#include "Text.h"
+#include "IDrawable.h"
 
 
 
-class Menu {
+class Menu : public IDrawable{
 public:
+    /// \param renderer : renderer where we draw the menu
     Menu(SDL_Renderer * renderer);
     virtual ~Menu();
     
-    void update();
-    void init();
-    void drawTextBlended(TTF_Font * font, const std::string & message, const SDL_Color & color, int x, int y, int w, int h);
+    /// \goal : draw all IDrawable inside m_drawableVector
+    virtual void draw() const;
+    
+    /// \goal : getter for the button and drawable vectors
+    std::vector<IDrawable*>& getDrawableList();
+    std::vector<Button*>& getButtonList();
+    
+    /// \goal : set the texture of the background
+    void setMenuTexture(SDL_Texture* menuTexture);
 
-    vector<Button> getButtonList() const {
-        return buttonVector;
-    }
+    /// \param x
+    /// \param y 
+    /// \return : true if (x,y) is in the button rectangle
+    /// \comment : not used for the moment, could be linked to the detection of subelements
+    virtual bool detectSelection(int x, int y) const {return false;}
+
+    virtual const int getDrawableId() const {return 1;}
+    virtual DRAWABLE_TYPE getDrawableType() const {return BUTTON_TYPE;}
+
+    /// \param buttonState : state of the button (PRESSED, MOUSE_OVER, NO_ACTION)
+    /// \goal : change button state, ie its image
+    virtual void setButtonState(BUTTON_STATE buttonState) const {}
+    
 
     
 private:
-    SDL_Texture * menuTexture; // menu graphics background
-
-    SDL_Texture * buttonImage[3];
-    SDL_Renderer * renderer;
-    std::vector<Button> buttonVector;
-    int buttonInterval;
-    
-    TTF_Font* titleFont;
-    TTF_Font* infoFont;
-    
-    
+    SDL_Texture * m_menuTexture; // menu graphics background
+    std::vector<IDrawable*> m_drawableVector; // vector of drawable
+    std::vector<Button*> m_buttonVector; //vector of buttons
+    SDL_Renderer * m_renderer; // renderer where we draw graphics
+ 
 
 };
 

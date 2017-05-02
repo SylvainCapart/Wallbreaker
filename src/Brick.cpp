@@ -9,11 +9,11 @@
 #include "Const.h"
 
 Brick::Brick(int x, int y, int resistance) {
-    this->x = x;
-    this->y = y;
-    this->w = BRICK_WIDTH;
-    this->h = BRICK_HEIGHT;
-    this->resistance = resistance;
+    m_x = x;
+    m_y = y;
+    m_w = BRICK_WIDTH;
+    m_h = BRICK_HEIGHT;
+    m_resistance = resistance;
     
 }
 

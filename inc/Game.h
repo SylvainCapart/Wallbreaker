@@ -15,102 +15,51 @@
 #include <SDL_image.h>
 #include <SDL_ttf.h>
 
-#include <cstdio>  
-#include <map>  
-#include <list>
-#include <cmath>
+#include <cstdio>   
 #include <iostream>
 #include <string>
-#include "Ball.h"
-#include "Racket.h"
 #include "Const.h"
 #include "Types.h"
-#include "Brick.h"
-#include "Collision.h"
-#include "Level.h"
+#include "IState.h"
+#include "GameState.h"
+#include "MenuState.h"
+#include "ScoreState.h"
 #include <assert.h>
-#include "Menu.h"
+
+
 
 // See Game.cpp for functionnal description
 
 class Game {
 public:
     Game();  
-    Game(const Game& orig);
-    virtual ~Game();  
-    void start();  
-    void stop() ;  
-    void draw(); 
-    void drawMenu();
-    void drawWon();
+    virtual ~Game(); 
     
-    void checkBrickPresence();
-    void initRackets();
-    void placeBall();
-    void fillRectGame(SDL_Rect* rc, int r, int g, int b );  
-    void fillRectGame(SDL_Rect* rc, const Color& color);  
+    /// \goal : launches the main thread, run()
+    void start(); 
+    
+    /// \goal : stop the main thread, run()
+    void stop() ; 
+    
+    /// \param fps : frames per second
+    /// \goal : displays the title and the fps
     void fpsChanged( int fps );  
-    void onQuit();  
-    void onKeyDown( SDL_Event* event );  
-    void onKeyUp( SDL_Event* event ); 
+    
+    /// \goal : main thread, handling current state, sending events and draw orders to this state
     void run();
-    void buildBrickMap();
-    float getRacketContactRatio(const Point & A, const Point & B, const Point & C);
-    int getSpeedModifCoeffFromContactRatio(float contactRatio);
-
-    void setRenderDrawColor(SDL_Renderer * renderer, Color * color);
-    void update();
-    void notLaunchedBallUpdate();
-    Racket * getProperRacket(SDL_Keycode keyId);
+    
+    /// \goal : change the current state
+    void setCurrentState(STATE newState);
     
 private:  
-    std::map<int,int> keys; // map of keys to know which one is up or done 
-    int frameSkip ;  // redraw graphics once enough frames have passed
-    int running ;  // main thread activator
-    
-    // graphics variables
-    SDL_Window * window;
-    SDL_Renderer * renderer;
-    Menu * menu;
-    Color * cobalt;
-    Color * red;
-    Color * blueGreen;
-    Color * darkBlueGreen;
-    Color * yellow;
-    Color * paleOrange;
-    Color * green;
-    Color * black;
-    Color * darkCobalt;
-    SDL_Texture * ballTexture;
+    int m_frameSkip ;  // redraw graphics once enough frames have passed
+    int m_running ;  // main thread activator
+    IState * m_currentState; // current selected state among m_stateVector 
+    IState * m_stateVector[STATE_NUMBER]; // table of IState*, holding all possible states of the game
+    SDL_Window * m_window; // window needed to support graphics creation
+    SDL_Renderer * m_renderer; // renderer where we draw graphics
 
-    SDL_Texture * wonTexture; // end screen graphics
     
-    Racket * rackets[TOTAL_RACKET_NUMBER]; // all rackets
-  
-    Ball * ball; // one ball for the actual version
-    
-    int initialRacketId; // initial racket where the ball is placed
-    int rackets_number; // number of rackets
-    int middleRacketAngle; // angle of rotation for the middle racket
-    int collisionInhibition; // used to prevent the collision function for happening
-    
-    
-    Brick * brickMap[BRICK_AREA_X_NUMBER][BRICK_AREA_Y_NUMBER]; // 2D table containing O 1 or 2
-    
-    GAMESTATE gameState; // state of the game : MENU, GAME or WON
-    
-    bool menuDrawn; // menu is present or not
-    bool wonDrawn; // end screen is present or not
-    bool levelSelected; // level has been chosen or not
-    bool won; // all bricks have been hit or not
-    bool middleRacketPresent; // mode with middle racket or not
-    bool middleRacketRotationActivated; // middle racket rotation activation or inhibition 
-    bool collisionActivated; // ball collision activated or not
-    bool mouseIsMoving; // to notice mouse movement on screen
-    int mouseX, mouseY; // mouse coordinates
-    bool mouseButtonDown, mouseButtonUp;
-    
-    Level * currentLevel; // instance of Level class to use its method, because the methods are not static.
 };  
 
 #endif	/* GAME_H */

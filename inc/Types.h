@@ -105,11 +105,6 @@ enum ORIENTATION { // orientation of the rackets
     VERTICAL
 };
 
-enum GAMESTATE { // state of the game
-    MENU,
-    GAME,
-    WON
-};
 
 enum AXIS {
     XAXIS,
@@ -132,10 +127,26 @@ enum OBSTACLE_SEGMENT { // position of a segment on a SDL_rect obstacle
     
 };
 
-enum BUTTON_STATE {
+enum BUTTON_STATE { // state of the button following mouse actions
     NO_ACTION,
     MOUSE_OVER,
     PRESSED
+};
+
+enum STATE { // states possible for a IState
+    MENU_STATE,
+    GAME_STATE,
+    SCORE_STATE
+};
+
+enum BUTTON_ID {
+    MENU_START,
+    MENU_QUIT
+};
+
+enum DRAWABLE_TYPE {
+    BUTTON_TYPE,
+    TEXT_TYPE
 };
 
 #endif /* TYPES_H */

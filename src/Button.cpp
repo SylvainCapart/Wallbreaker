@@ -7,54 +7,30 @@
 
 #include "Button.h"
 
-Button::Button(const SDL_Rect & buttonRect, SDL_Renderer * renderer, const string & text, const SDL_Color
-& textColor , TTF_Font & textFont, SDL_Texture * buttonImage[3])
-: buttonRect(buttonRect) {
-    
-    this->buttonImage[NO_ACTION] = buttonImage[NO_ACTION];
-    this->buttonImage[MOUSE_OVER] = buttonImage[MOUSE_OVER];
-    this->buttonImage[PRESSED] = buttonImage[PRESSED];
-    
-    this->textOrigin = BUTTON_TEXT_ORIGIN;
-    this->textMargin = BUTTON_TEXT_MARGIN;
-    
-    this->textRect.x = buttonRect.x + textOrigin;
-    this->textRect.y = buttonRect.y + textOrigin;
-    this->textRect.w = buttonRect.w - textMargin;
-    this->textRect.h = buttonRect.h - textMargin;
-    
-    
-    this->buttonState = NO_ACTION;
-    this->text = text;
-    
-    this->textColor = textColor;
-    
-    
-    SDL_Surface * buttonTextSurface = TTF_RenderText_Blended(&textFont, text.c_str(), textColor);
-    buttonTextTexture = SDL_CreateTextureFromSurface(renderer, buttonTextSurface);
-    
-    SDL_FreeSurface(buttonTextSurface);
-    
+using namespace std;
+
+Button::Button(SDL_Renderer * renderer, Text * buttonText, const BUTTON_ID buttonId, const SDL_Rect & buttonRect, SDL_Texture * buttonImage[3])
+: m_buttonRect(buttonRect),m_buttonId(buttonId), m_renderer(renderer), m_buttonText(buttonText)
+ {   
+    m_buttonImage[NO_ACTION] = buttonImage[NO_ACTION];
+    m_buttonImage[MOUSE_OVER] = buttonImage[MOUSE_OVER];
+    m_buttonImage[PRESSED] = buttonImage[PRESSED];       
+    m_buttonState = NO_ACTION;
 }
-
-
 
 Button::~Button() {
-    
+    delete m_buttonText;
 }
-
 
 bool Button::detectSelection(int x, int y) const {
-    
-    return (x > buttonRect.x && x < buttonRect.x + buttonRect.w && y > buttonRect.y && y < buttonRect.y + buttonRect.h );
-    
+    return (x > m_buttonRect.x && x < m_buttonRect.x + m_buttonRect.w && y > m_buttonRect.y && y < m_buttonRect.y + m_buttonRect.h );
 }
 
-void Button::draw(SDL_Renderer * renderer) const {
-    
-    SDL_RenderCopy(renderer, buttonImage[buttonState], NULL, &buttonRect);
-    SDL_RenderCopy(renderer, buttonTextTexture, NULL, &textRect);
-    
+void Button::draw() const {
+    SDL_RenderCopy(m_renderer, m_buttonImage[m_buttonState], NULL, &m_buttonRect);
+    m_buttonText->draw();
 }
+
+
 
 

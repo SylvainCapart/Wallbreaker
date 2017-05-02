@@ -16,6 +16,9 @@
 extern "C" {
 #endif
 
+    //General
+#define STATE_NUMBER 3
+    
     // Size of a brick
 #define BRICK_WIDTH 40
 #define BRICK_HEIGHT 20
@@ -54,7 +57,7 @@ extern "C" {
 #define MAX_Y_BALL_SPEED 4.6
 #define INITIAL_SPEED  MAX_X_BALL_SPEED/1;
     
-    // Buttons
+    // Buttons constants
 #define BUTTON_TEXT_ORIGIN 15
 #define BUTTON_TEXT_MARGIN 30
     
