@@ -15,82 +15,94 @@
 #include "Game.h"
 
 #include <iostream>
+#include "Const.h"
+#include "Types.h"
+#include <sstream>
 
 using namespace std;
 
-MenuState::MenuState(SDL_Renderer * renderer, Game & game) : m_renderer(renderer), m_game(game) {
-    m_menu = new Menu(renderer);
-    SDL_Color white = {255, 255, 255};
+MenuState::MenuState(SDL_Renderer * renderer, Game & game, StateContext & stateContext) : m_renderer(renderer), m_game(game),
+        m_stateContext(stateContext) {
+    
+    m_menuTable[MAIN_MENU] = new Menu(renderer);
+    m_menuTable[LEVEL_CHOICE_MENU] = new Menu(renderer);
+    m_menuTable[SCORE_MENU] = new Menu(renderer);
+    
+    m_menuTable[MAIN_MENU]->setMenuTexture(IMG_LoadTexture(renderer, "img/space1.jpg"));
+    
+    m_buttonImage[NO_ACTION] = IMG_LoadTexture(renderer, "img/blue_button_no_action.png");
+    m_buttonImage[MOUSE_OVER] = IMG_LoadTexture(renderer, "img/blue_button_mouse_over.png");
+    m_buttonImage[PRESSED] = IMG_LoadTexture(renderer, "img/blue_button_pressed.png");
+    
+    int explIndex = 4; //explanation begin index 
+    //texts and buttons are placed following the grid defined by XU and YU
+    m_menuTable[MAIN_MENU]->createText(Fonts::st_titleFont, "Wallbreaker", Colors::st_white, 0.5 , 0.5, 7, 2 );
+    m_menuTable[MAIN_MENU]->createText(Fonts::st_infoFont, "Player 1 : QZSD", Colors::st_white, 4 , explIndex , 3, 1);
+    m_menuTable[MAIN_MENU]->createText(Fonts::st_infoFont, "Player 2 : UP DOWN", Colors::st_white, 4 , (explIndex + 1) , 3.5, 1);
+    m_menuTable[MAIN_MENU]->createText(Fonts::st_infoFont, "LEFT RIGHT", Colors::st_white, 4 , (explIndex + 2) , 2, 1);
+    m_menuTable[MAIN_MENU]->createText(Fonts::st_infoFont, "SPACE : Launch ball", Colors::st_white, 4 , (explIndex + 3) , 3, 1);
+    m_menuTable[MAIN_MENU]->createText(Fonts::st_infoFont, "and middle racket", Colors::st_white, 4 , (explIndex + 4) , 3, 1);
+    m_menuTable[MAIN_MENU]->createText(Fonts::st_infoFont, "ESCAPE : Quit", Colors::st_white, 4 , (explIndex + 5) , 3, 1);
+    m_menuTable[MAIN_MENU]->createText(Fonts::st_numberFont, "0.4", Colors::st_white, 3.5, 2.8, 1, 1);
+    m_menuTable[MAIN_MENU]->createText(Fonts::st_infoFont, "Sylvain Capart 2017", Colors::st_white, 2.5, 10.9, 3, 1);
+    
+    m_menuTable[MAIN_MENU]->createButton(B_MENU_START, m_buttonImage, Fonts::st_infoFont,
+            "Start", Colors::st_white, 1, 5, 2.5, 1.6);
+    m_menuTable[MAIN_MENU]->createButton(B_MENU_QUIT, m_buttonImage, Fonts::st_infoFont,
+            "Quit", Colors::st_white, 1, 7, 2.5, 1.6);
+    
+    m_menuTable[LEVEL_CHOICE_MENU]->setMenuTexture(IMG_LoadTexture(renderer, "img/space1.jpg"));
 
-    m_titleFont = TTF_OpenFont("font/play the game.ttf", 124);
-    if (!m_titleFont) {
-        cerr << "TTF_OpenFont: " << TTF_GetError() << endl;
-    }
+    m_menuTable[LEVEL_CHOICE_MENU]->createButton(B_RANDOM_LEVEL, m_buttonImage, Fonts::st_infoFont,
+            "Random level", Colors::st_white, 2.5, 3, 3, 1.6);
+    m_menuTable[LEVEL_CHOICE_MENU]->createButton(B_DEMO_LEVEL, m_buttonImage, Fonts::st_infoFont,
+            "Demo level", Colors::st_white, 2.5, 5, 3, 1.6);
+    m_menuTable[LEVEL_CHOICE_MENU]->createButton(B_EDIT_LEVEL, m_buttonImage, Fonts::st_infoFont,
+            "Create level !", Colors::st_white, 2.5, 7, 3, 1.6);
+    m_menuTable[LEVEL_CHOICE_MENU]->createButton(B_BACK_FROM_LEVEL_CHOICE, m_buttonImage, Fonts::st_arrowFont,
+            "B", Colors::st_white, 0.5, 9, 1, 0.8);
+    
+    m_menuTable[SCORE_MENU]->setMenuTexture(IMG_LoadTexture(renderer, "img/space1.jpg"));
+    
+    m_menuTable[SCORE_MENU]->createButton(B_BACK_FROM_LEVEL_CHOICE, m_buttonImage, Fonts::st_arrowFont,
+            "B", Colors::st_white, 0.5, 9, 1, 0.8);
 
-    m_infoFont = TTF_OpenFont("font/LinLibertine_R.ttf", 64);
-    if (!m_infoFont) {
-        cerr << "TTF_OpenFont: " << TTF_GetError() << endl;
-    }
-    m_menu->setMenuTexture(IMG_LoadTexture(renderer, "img/space1.jpg"));
-
-    m_buttonImage[NO_ACTION] = IMG_LoadTexture(renderer, "img/button_no_action.png");
-    m_buttonImage[MOUSE_OVER] = IMG_LoadTexture(renderer, "img/button_mouse_over.png");
-    m_buttonImage[PRESSED] = IMG_LoadTexture(renderer, "img/button_pressed.png");
-
-    //TODO : replace hard values with a proper solution
-    Text * text1 = new Text(renderer, m_titleFont, "Wallbreaker", white, 50, 70, 700, 100);
-    Text * text2 = new Text(renderer, m_infoFont, "Player 1 : QZSD", white, 400, 200, 300, 60);
-    Text * text3 = new Text(renderer, m_infoFont, "Player 2 : UP DOWN", white, 400, 250, 340, 60);
-    Text * text4 = new Text(renderer, m_infoFont, "LEFT RIGHT", white, 400, 310, 170, 60);
-    Text * text5 = new Text(renderer, m_infoFont, "SPACE : Launch ball", white, 400, 360, 300, 60);
-    Text * text6 = new Text(renderer, m_infoFont, "and middle racket", white, 400, 410, 300, 60);
-    Text * text7 = new Text(renderer, m_infoFont, "ESCAPE : Quit", white, 400, 460, 300, 60);
-
-    SDL_Rect startRect = {100, 220, 260, 80};
-    SDL_Rect quitRect = {100, 350, 260, 80};
-    Text * startText = new Text(renderer, m_infoFont, "Start", white, 100, 220, 250, 80);
-    Text * quitText = new Text(renderer, m_infoFont, "Quit", white, 100, 350, 250, 80);
-    Button * startButton = new Button(renderer, startText, MENU_START, startRect, m_buttonImage);
-    Button * quitButton = new Button(renderer, quitText, MENU_QUIT, quitRect, m_buttonImage);
-
-
-    m_menu->getDrawableList().push_back(text1);
-    m_menu->getDrawableList().push_back(text2);
-    m_menu->getDrawableList().push_back(text3);
-    m_menu->getDrawableList().push_back(text4);
-    m_menu->getDrawableList().push_back(text5);
-    m_menu->getDrawableList().push_back(text6);
-    m_menu->getDrawableList().push_back(text7);
-    m_menu->getDrawableList().push_back(startButton);
-    m_menu->getDrawableList().push_back(quitButton);
-
-    m_menu->getButtonList().push_back(startButton);
-    m_menu->getButtonList().push_back(quitButton);
+    m_menuTable[SCORE_MENU]->createText(Fonts::st_infoFont, "Well done ladies and gentlemen !", Colors::st_white, 0.5, 4, 7, 1.5);
+    m_menuTable[SCORE_MENU]->createText(Fonts::st_infoFont, "Score : ", Colors::st_white, 2.3, 6.4, 1.5, 1.4);
+    
+    m_scoreText = m_menuTable[SCORE_MENU]->createText(Fonts::st_numberFont, to_string(0).c_str(),
+            Colors::st_white, 3.8, 6.7, 0.6, 1);
+    
 }
 
 MenuState::~MenuState() {
-    TTF_CloseFont(m_infoFont);
-    TTF_CloseFont(m_titleFont);
+ 
     SDL_DestroyTexture(m_buttonImage[NO_ACTION]);
     SDL_DestroyTexture(m_buttonImage[MOUSE_OVER]);
     SDL_DestroyTexture(m_buttonImage[PRESSED]);
-    delete m_menu;
-
+    for (int i = 0; i < MENU_STATE_NUMBER; i++)
+        delete m_menuTable[i];
+    
+    
 }
 
 void MenuState::draw() {
-    m_menu->draw();
+    
+    m_currentMenuState->draw();
 }
 
 void MenuState::onKeyDown(SDL_Event* evt) {
     m_keys[ evt->key.keysym.sym ] = 1;
-
+    
 }
 
 void MenuState::onKeyUp(SDL_Event* evt) {
     m_keys[ evt->key.keysym.sym ] = 0;
-    if (SDLK_ESCAPE == evt->key.keysym.sym) {
-        m_game.stop();
+    if (SDLK_ESCAPE == evt->key.keysym.sym && MAIN_MENU == m_currentMenuStateId) {
+        onQuit();
+    }
+    if (SDLK_ESCAPE == evt->key.keysym.sym && LEVEL_CHOICE_MENU == m_currentMenuStateId) {
+        setCurrentMenuState(MAIN_MENU);
     }
 }
 
@@ -98,45 +110,123 @@ void MenuState::onQuit() {
     m_game.stop();
 }
 
-void MenuState::update() {
-
-}
-
 void MenuState::onEvent(SDL_Event* evt) {
-    vector<Button*>::const_iterator it;
+    vector<IMouseListener*>::const_iterator it;
+    SDL_GetMouseState(&m_mouseX, &m_mouseY);
+    
+    for (it = m_currentMenuState->getMouseListenerVector().begin(); it != m_currentMenuState->getMouseListenerVector().end(); ++it) 
+                    (*it)->noFocus();
+    
     switch (evt->type) {
         case SDL_QUIT: onQuit();
-            break;
+        break;
         case SDL_KEYDOWN: onKeyDown(evt);
-            break;
+        break;
         case SDL_KEYUP: onKeyUp(evt);
+        break;
+        case SDL_MOUSEBUTTONUP: 
+            onClickUp(evt);
+            break;
+        case SDL_MOUSEBUTTONDOWN : 
+            onClickDown(evt);
+            break;
+        case SDL_MOUSEMOTION : 
+            onMouseMotion(evt);
             break;
         default:
             break;
     }
-
-    SDL_GetMouseState(&m_mouseX, &m_mouseY);
-    for (it = m_menu->getButtonList().begin(); it != m_menu->getButtonList().end(); ++it) {
-        if ((*it)->detectSelection(m_mouseX, m_mouseY)) {
-            if (MENU_START == (*it)->getDrawableId() && SDL_MOUSEBUTTONUP == evt->type) {
-                m_game.setCurrentState(GAME_STATE);
-                return;
-            } else if (MENU_QUIT == (*it)->getDrawableId() && SDL_MOUSEBUTTONUP == evt->type) {
-                m_game.stop();
-                return;
-            } else if (SDL_MOUSEBUTTONDOWN == evt->type) {
-                (*it)->setButtonState(PRESSED);
-            } else
-                (*it)->setButtonState(MOUSE_OVER);
-        } else
-            (*it)->setButtonState(NO_ACTION);
-
-    }
-
 }
+
+
+void MenuState::onClickDown(SDL_Event* evt) {
+    vector<IMouseListener*>::const_iterator it;
+    for (it = m_currentMenuState->getMouseListenerVector().begin(); it != m_currentMenuState->getMouseListenerVector().end(); ++it) 
+            {
+                if ((*it)->detectSelection(m_mouseX, m_mouseY))
+                    (*it)->onClickDown(evt);
+            }
+}
+
+void MenuState::onClickUp(SDL_Event* evt) {
+    vector<IMouseListener*>::const_iterator it;
+for (it = m_currentMenuState->getMouseListenerVector().begin(); it != m_currentMenuState->getMouseListenerVector().end(); ++it)
+            {   
+                if ((*it)->detectSelection(m_mouseX, m_mouseY))
+                {
+                    (*it)->onClickUp(evt);
+                    if (B_MENU_START == (*it)->getMouseListenerId())
+                    {
+                        setCurrentMenuState(LEVEL_CHOICE_MENU);
+                        return;
+                    }
+                    else if (B_MENU_QUIT == (*it)->getMouseListenerId())
+                    {
+                        m_game.stop();
+                        return;
+                    }
+                    else if (B_RANDOM_LEVEL == (*it)->getMouseListenerId())
+                    {
+                        m_stateContext.setLoadLevelType(RANDOM_LEVEL);
+                        m_game.setCurrentState(GAME_STATE);
+                        return;
+                    } 
+                    else if (B_DEMO_LEVEL == (*it)->getMouseListenerId())
+                    {
+                        m_stateContext.setLoadLevelType(DEMO_LEVEL);
+                        m_game.setCurrentState(GAME_STATE);
+                        return;
+                    } 
+                    else if (B_EDIT_LEVEL == (*it)->getMouseListenerId())
+                    {
+                        
+                        m_game.setCurrentState(EDIT_STATE);
+                        return;
+                    } 
+                    else if (B_BACK_FROM_LEVEL_CHOICE == (*it)->getMouseListenerId())
+                    {
+                        setCurrentMenuState(MAIN_MENU);
+                        return;
+                    }
+                    else
+                        cout << "Unknown button has been detected and clicked : check MenuState.cpp:onEvent()"; //should not happen   
+                }  
+            }
+}
+
+void MenuState::onMouseMotion(SDL_Event* evt) {
+    vector<IMouseListener*>::const_iterator it;
+    for (it = m_currentMenuState->getMouseListenerVector().begin(); it != m_currentMenuState->getMouseListenerVector().end(); ++it) 
+    {
+        if ((*it)->detectSelection(m_mouseX, m_mouseY))
+            (*it)->onMouseMotion(evt);
+    }
+}
+
 
 void MenuState::init() {
     m_mouseX = 0;
     m_mouseY = 0;
+    if (MAIN_MENU == m_stateContext.getMenuType())
+        setCurrentMenuState(MAIN_MENU);
+    else if (LEVEL_CHOICE_MENU == m_stateContext.getMenuType())
+        setCurrentMenuState(LEVEL_CHOICE_MENU);
+    else // score_menu
+    {
+        m_scoreText->changeText(to_string(m_stateContext.getScore()));
+        setCurrentMenuState(SCORE_MENU);
+    }
+    
 }
 
+void MenuState::setCurrentMenuState(T_MENU_STATE newState) {
+    m_currentMenuState = m_menuTable[newState];
+    m_currentMenuStateId = newState;
+}
+
+string MenuState::to_string(int i)
+{
+    std::stringstream ss;
+    ss << i;
+    return ss.str();
+}

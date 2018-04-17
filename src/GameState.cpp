@@ -12,87 +12,109 @@
  */
 
 #include "GameState.h"
-#include "Brick.h"
-#include "Game.h"
+
+#include "Collision.h"
+#include "MenuState.h"
 #include <iostream>
+#include <string>
+#include <array>
+#include <fstream>
+#include <sstream>
+#include <algorithm>
+
+#include <cmath>
 
 using namespace std;
 
-GameState::GameState(SDL_Renderer * renderer, Game & game):m_levelId(1),m_renderer(renderer), m_game(game) {
+GameState::GameState(SDL_Renderer * renderer, Game & game, StateContext & stateContext): m_renderer(renderer),
+        m_game(game), m_stateContext(stateContext), m_score(0), m_past(0), m_pastScore(0), m_blockCounter(0) {
+    m_menu = new Menu(m_renderer);
     m_middleRacketPresent = true;
-    m_collisionActivated = true;
-    m_middleRacketRotationActivated = true;
     m_levelSelected = false;
     m_won = false;
-    m_initialRacketId = 0;
-    m_ball = new Ball();
-    m_ballTexture = IMG_LoadTexture(renderer, "img/ball2.png");
-    if (NULL == m_ballTexture)
-        cout << "Error charging ball graphics" << endl;
+    m_initialRacketId = BOTTOM;
     
-    m_rackets[BOTTOM] = new Racket(WINDOW_WIDTH / 2 - RACKET_WIDTH / 2, WINDOW_HEIGHT - RACKET_HEIGHT / 2 - MARGIN_BOTTOM_RACKET, HORIZONTAL);
-    m_rackets[TOP] = new Racket(WINDOW_WIDTH / 2 - RACKET_WIDTH / 2, RACKET_HEIGHT / 2, HORIZONTAL);
-    m_rackets[LEFT] = new Racket(RACKET_HEIGHT / 2, WINDOW_HEIGHT / 2 - RACKET_WIDTH / 2, VERTICAL);
-    m_rackets[RIGHT] = new Racket(WINDOW_WIDTH - RACKET_HEIGHT / 2 - MARGIN_BOTTOM_RACKET, WINDOW_HEIGHT / 2 - RACKET_WIDTH / 2 - MARGIN_BOTTOM_RACKET, VERTICAL);
     
+    m_screenColor = new Color(Colors::st_cobalt.r,Colors::st_cobalt.g,Colors::st_cobalt.b);
+    
+    m_rackets[BOTTOM] = m_menu->createRacket( WINDOW_WIDTH / 2 - RACKET_WIDTH / 2, WINDOW_HEIGHT - RACKET_HEIGHT / 2 - MARGIN_BOTTOM_RACKET,
+            HORIZONTAL, Colors::st_blueGreen, Colors::st_darkCobalt, K_LEFT, K_RIGHT, BOTTOM);
+    m_rackets[TOP] = m_menu->createRacket( WINDOW_WIDTH / 2 - RACKET_WIDTH / 2, RACKET_HEIGHT / 2,
+            HORIZONTAL, Colors::st_blueGreen, Colors::st_darkCobalt, K_Q, K_D, TOP);
+    m_rackets[LEFT] = m_menu->createRacket( RACKET_HEIGHT / 2, WINDOW_HEIGHT / 2 - RACKET_WIDTH / 2,
+            VERTICAL, Colors::st_blueGreen, Colors::st_darkCobalt, K_S, K_Z, LEFT);
+    m_rackets[RIGHT] = m_menu->createRacket( WINDOW_WIDTH - RACKET_HEIGHT / 2 - MARGIN_BOTTOM_RACKET, WINDOW_HEIGHT / 2 - RACKET_WIDTH / 2 - MARGIN_BOTTOM_RACKET,
+            VERTICAL, Colors::st_blueGreen, Colors::st_darkCobalt, K_UP, K_DOWN, RIGHT);
     
     if (m_middleRacketPresent) {
-        m_rackets[MIDDLE] = new Racket(WINDOW_WIDTH / 2 - RACKET_WIDTH / 2, WINDOW_HEIGHT / 2 - RACKET_HEIGHT / 2, HORIZONTAL);
+        m_rackets[MIDDLE] = m_menu->createRotatingRacket(WINDOW_WIDTH / 2 - RACKET_WIDTH / 2, WINDOW_HEIGHT / 2 - RACKET_HEIGHT / 2,
+                Colors::st_blueGreen, Colors::st_darkCobalt, K_SPACE, K_NULL, MIDDLE);
     }
     
-    m_cobalt = new Color(34, 66, 124);
-    m_darkCobalt = new Color(23, 45, 84);
-    m_red = new Color(255, 0, 0);
-    m_blueGreen = new Color(18, 179, 174);
-    m_darkBlueGreen = new Color(9, 45, 45);
-    m_yellow = new Color(247, 236, 133);
-    m_paleOrange = new Color(255, 178, 102);
-    m_green = new Color(0, 204, 0);
-    m_black = new Color(0, 0, 0);
+    m_ball = m_menu->createBall("img/ball2.png");
+    
+    m_menu->createText(Fonts::st_infoFont, "Score :", Colors::st_white, 6.3, 0.5, 1, 0.7);
+    m_scoreText = m_menu->createText(Fonts::st_numberFont, to_string(m_score).c_str(), Colors::st_white, 7.4, 0.5, 0.3, 0.7);
+    
+    for (int i = 0; i < NB_BRICKS_WIDTH; ++i) {
+        for (int j = 0; j < NB_BRICKS_HEIGHT; ++j) {
+            m_brickMap[i][j] = new Brick(i * BRICK_WIDTH, j * BRICK_HEIGHT , 0, m_renderer);
+        }
+    }
     
 }
 
 void GameState::init() {
+    
+    string demoFileName = "lvl/niveau00.lvl";
+    string editedFileName = "lvl/editedLevel.lvl";
     m_levelSelected = false;
-    m_middleRacketAngle = 0;
     m_won = false;
+    m_score = 0;
+    m_scoreText->changeText("0");
+    m_pastScore = 0;
+    m_blockCounter = 0;
     
     m_ball->setLaunched(false);
-    placeBall();
-    
+    m_initialRacketId = m_ball->placeBall(m_rackets);
     
     if (!m_levelSelected) {
-        loadLevel(m_brickMap);
+        if (RANDOM_LEVEL == m_stateContext.getLoadLevelType())
+            loadRandomLevel(m_brickMap);
+        else if (DEMO_LEVEL == m_stateContext.getLoadLevelType())
+            loadFileLevel(m_brickMap, demoFileName);
+        else // EDITED_LEVEL
+            loadFileLevel(m_brickMap, editedFileName);
+        
         m_levelSelected = true;
     }
 }
 
 GameState::~GameState() {
-    SDL_DestroyTexture(m_ballTexture);
-    for (int i = 0; i < TOTAL_RACKET_NUMBER; ++i) {
-        delete m_rackets[i];
-        m_rackets[i] = NULL;
-    }
-    delete m_ball;
-    m_ball = NULL;
     
-    delete m_green;
-    delete m_cobalt;
-    delete m_darkCobalt;
-    delete m_red;
-    delete m_black;
-    delete m_blueGreen;
-    delete m_darkBlueGreen;
-    delete m_yellow;
-    delete m_paleOrange;
+    delete m_screenColor;
+    delete m_menu;
+    
+    for (int i = 0; i < NB_BRICKS_WIDTH; ++i) {
+        for (int j = 0; j < NB_BRICKS_HEIGHT; ++j) {
+            delete m_brickMap[i][j];
+        }
+    }
+    
 }
 
-/* Function : loadLevel
+std::string GameState::to_string(int i)
+{
+    std::stringstream ss;
+    ss << i;
+    return ss.str();
+}
+/* Function : loadFileLevel
  * 
  * Input : int brickMap[BRICK_AREA_X_NUMBER][BRICK_AREA_Y_NUMBER] : the 2D table
- * to fill with 0 1 or 2 following the characters in the loaded file.
+ * to fill with numbers following the characters in the loaded file.
  * 
- * Output : 1 on success or 0 on failure
+ * Output : true on success or 0false on failure
  * 
  * Goal : fill the brickMap with correct data, used by class Game.
  * 
@@ -100,41 +122,83 @@ GameState::~GameState() {
  * Replace the C code with adapted C++ code for file management.
  */
 
-int GameState::loadLevel(Brick * brickMap[BRICK_AREA_X_NUMBER][BRICK_AREA_Y_NUMBER]) {
-    FILE * file = NULL;
+bool GameState::loadFileLevel(Brick * brickMap[NB_BRICKS_WIDTH][NB_BRICKS_HEIGHT], std::string& fileName) {
+    string fileLign;
+    stringstream buffer;
+    ifstream file(fileName.c_str());
+    if (file.good())
+    {
+        buffer << file.rdbuf();
+    }
+    else
+    {
+        cerr << "ERROR : Level file not found. Try regenerating Makelist" << endl;
+        return false;
+    }
+    fileLign = buffer.str();
+    
+    for (int i = BRICK_AREA_X_ORIGIN_NUMBER; i < BRICK_AREA_X_ORIGIN_NUMBER + BRICK_AREA_X_NUMBER; ++i) {
+        for (int j = BRICK_AREA_Y_ORIGIN_NUMBER; j < BRICK_AREA_Y_ORIGIN_NUMBER + BRICK_AREA_Y_NUMBER; ++j) {
+            brickMap[i][j]->SetResistance((fileLign[i  * NB_BRICKS_WIDTH + j] - '0') % 48);
+            if (m_middleRacketPresent && getIntSqrDistance(m_rackets[MIDDLE]->getX() +
+                    m_rackets[MIDDLE]->getW()/2, m_rackets[MIDDLE]->getY() + + m_rackets[MIDDLE]->getH()/2,
+                    brickMap[i][j]->GetX() + brickMap[i][j]->GetW()/2, brickMap[i][j]->GetY() + brickMap[i][j]->GetH()/2  ) 
+                    < m_rackets[MIDDLE]->getW() * m_rackets[MIDDLE]->getW() / 4)
+                brickMap[i][j]->SetResistance(0); //empty the bricks in the middle if there is a middle racket
+        }
+    }
+    file.close();
+    return true;
+}
+
+/* Function : loadRandomLevel
+ * 
+ * Input : int brickMap[BRICK_AREA_X_NUMBER][BRICK_AREA_Y_NUMBER] : the 2D table
+ * to fill with numbers following a statistical law
+ * 
+ * Output : none
+ * 
+ * Goal : fill the brickMap with correct data, used by class Game.
+ */
+
+void GameState::loadRandomLevel(Brick * brickMap[NB_BRICKS_WIDTH][NB_BRICKS_HEIGHT]) {
+    
     char fileLign[(BRICK_AREA_X_NUMBER * BRICK_AREA_Y_NUMBER)] = {0};
+    int randNb;
+    int brickResistance;
     
-    if (1 == m_levelId)
-        file = fopen("lvl/niveau03.lvl", "r");
-    
-    
-    if (NULL == file) {
-        cout << endl << "ERROR : Level file not found. Regenerate Makelist" << endl;
-        return 0;
+    for (int i = 0; i < BRICK_AREA_X_NUMBER * BRICK_AREA_Y_NUMBER; i++)
+    {
+        randNb = rand() % 20;
+        if (randNb >= 0 && randNb <=9)
+            brickResistance = 0;
+        else if (randNb >= 10 && randNb <= 14)
+            brickResistance = 1;
+        else if (randNb >= 15 && randNb <= 17)
+            brickResistance = 2;
+        else if (randNb == 18 )
+            brickResistance = 3;
+        else
+            brickResistance = 4;
+        
+        
+        std::string str = to_string(brickResistance);
+        fileLign[i] = str[0];
+        
     }
     
-    fgets(fileLign, BRICK_AREA_X_NUMBER * BRICK_AREA_Y_NUMBER + 1, file);
-    
-    for (int i = 0; i < BRICK_AREA_X_NUMBER; ++i) {
-        for (int j = 0; j < BRICK_AREA_Y_NUMBER; ++j) {
-            switch (fileLign[(i * BRICK_AREA_Y_NUMBER) + j]) {
-                case '0':
-                    brickMap[i][j] = new Brick((BRICK_AREA_X_ORIGIN_NUMBER + i) * BRICK_WIDTH, (BRICK_AREA_Y_ORIGIN_NUMBER + j) * BRICK_HEIGHT, 0);
-                    break;
-                case '1':
-                    brickMap[i][j] = new Brick((BRICK_AREA_X_ORIGIN_NUMBER + i) * BRICK_WIDTH, (BRICK_AREA_Y_ORIGIN_NUMBER + j) * BRICK_HEIGHT, 1);
-                    break;
-                case '2':
-                    brickMap[i][j] = new Brick((BRICK_AREA_X_ORIGIN_NUMBER + i) * BRICK_WIDTH, (BRICK_AREA_Y_ORIGIN_NUMBER + j) * BRICK_HEIGHT, 2);
-                    break;
-                default:
-                    break;
-            }
+    for (int i = BRICK_AREA_X_ORIGIN_NUMBER; i < BRICK_AREA_X_ORIGIN_NUMBER + BRICK_AREA_X_NUMBER; ++i) {
+        for (int j = BRICK_AREA_Y_ORIGIN_NUMBER; j < BRICK_AREA_Y_ORIGIN_NUMBER + BRICK_AREA_Y_NUMBER; ++j) {
+            brickMap[i][j]->SetResistance( (fileLign[((i - BRICK_AREA_X_ORIGIN_NUMBER) * BRICK_AREA_Y_NUMBER) + (j - BRICK_AREA_Y_ORIGIN_NUMBER)] - '0') % 48);
+            if (m_middleRacketPresent && getIntSqrDistance(m_rackets[MIDDLE]->getX() +
+                    m_rackets[MIDDLE]->getW()/2, m_rackets[MIDDLE]->getY() + + m_rackets[MIDDLE]->getH()/2,
+                    brickMap[i][j]->GetX() + brickMap[i][j]->GetW()/2, brickMap[i][j]->GetY() + brickMap[i][j]->GetH()/2  ) 
+                    < m_rackets[MIDDLE]->getW() * m_rackets[MIDDLE]->getW() / 4)
+                brickMap[i][j]->SetResistance(0); //empty the bricks in the middle if there is a middle racket
+            
         }
     }
     
-    fclose(file);
-    return 1;
 }
 
 /* Function : draw
@@ -149,7 +213,7 @@ int GameState::loadLevel(Brick * brickMap[BRICK_AREA_X_NUMBER][BRICK_AREA_Y_NUMB
  *        - ball vs rackets collisions : Collision class detects collision and draw()
  * method set the new speed following different parameters 
  *
- * TODO : optimisation
+ * DONE : optimisation
  * Simplify the function, creates sub-functions, separate the different activities
  * 
  * DONE 0.1 Avoid to draw bricks at each draw(), but redraw once a collision has been detected
@@ -157,43 +221,50 @@ int GameState::loadLevel(Brick * brickMap[BRICK_AREA_X_NUMBER][BRICK_AREA_Y_NUMB
  */
 
 void GameState::draw(){
-    
-    SDL_Rect racketRect; // drawing area for a racket
     bool contact = false; // contact ball/racket
     bool brickContact = false; // contact ball/brick
     float tempRatio; // temp variable for speed modifications
-    int coeffSpeedModif; // variable for speed modifications
-    int racketsNumber; // number of rackets
-    Vector rotatedBallSpeed; // speed of the ghost ball used for the collision on
-    //the rotated racket
     float squareNormSpeed; // norm speed
-    SDL_Rect brickRect;
-    brickRect.w = BRICK_WIDTH;
-    brickRect.h = BRICK_HEIGHT;
+    float squareDistance;
+    T_RACKET_POSITION closestRacketIndex;
+    int8_t coeffSpeedModif; // variable for speed modifications
+    int32_t now = SDL_GetTicks();
+    int32_t timeElapsed = now - m_past;
+    Vector rotatedBallSpeed; // speed of the ghost ball used for the collision on the rotated racket
     Vector normal, newSpeed, oldSpeed; // vectors used for speed changes
+    Vector newSpeedBeforeReturnRotation; // vector use for the middle racket rotation
     Point A, B, C; // points used for collision
+    Point closest; // to detect the closest point with the ghost ball on the non rotated racket
+    Point rotOrigin; // position of middle racket center
+    rotOrigin.x = m_rackets[MIDDLE]->getRacketCenter().x;
+    rotOrigin.y = m_rackets[MIDDLE]->getRacketCenter().y;
     SegmentPoints AB; // rebound segment of an obstacle
     SDL_Rect ballRect; // rectangle/square surrounding the ball
-    Circle ballCircle; // ball described by its center coordinates and radius
-    Color * screenColor = m_cobalt;
+    SDL_Rect racketRect; // drawing area for a racket
+    SDL_Rect brickRect;
+    SDL_Rect rotatedBallRect;
+    brickRect.w = BRICK_WIDTH;
+    brickRect.h = BRICK_HEIGHT;
     
-    if (!m_ball->isLaunched()) {
-        switch (m_initialRacketId) {
-            case BOTTOM:
-                m_ball->setX(m_rackets[BOTTOM]->getRacketCenter().x - LITTLE_BALL_DIAMETER / 2);
-                break;
-            case RIGHT:
-                m_ball->setY(m_rackets[RIGHT]->getRacketCenter().y - LITTLE_BALL_DIAMETER / 2);
-                break;
-            case LEFT:
-                m_ball->setY(m_rackets[LEFT]->getRacketCenter().y - LITTLE_BALL_DIAMETER / 2);
-                break;
-            case TOP:
-                m_ball->setX(m_rackets[TOP]->getRacketCenter().x - LITTLE_BALL_DIAMETER / 2);
-                break;
-        }
-    } else
-        m_ball->move();
+    Circle ballCircle; // ball described by its center coordinates and radius
+    Circle rotatedBallCircle; // ghost ball for collision on a non rotated middle racket
+    //decrement score every SCORE_INTERVAL
+    
+    if (timeElapsed > SCORE_INTERVAL)
+    {
+        if (m_score > 0)
+            --m_score;
+        m_past = now;
+    }
+    
+    // place the ball
+    if (!m_ball->isPlaced() && !m_ball->isLaunched()) {
+        m_initialRacketId = m_ball->placeBall(m_rackets);
+        m_blockCounter = 0;
+    }
+    updateRacketsPositions();
+    m_ball->update(m_initialRacketId, m_rackets);
+    
     
     ballRect.x = m_ball->getX();
     ballRect.y = m_ball->getY();
@@ -208,141 +279,131 @@ void GameState::draw(){
     oldSpeed.y = m_ball->getY_speed(); // y-speed before impact
     
     squareNormSpeed = oldSpeed.x * oldSpeed.x + oldSpeed.y * oldSpeed.y; // norm
-    
-    // place the ball
-    if (!m_ball->isPlaced() && !m_ball->isLaunched()) {
-        placeBall();
-    }
-    
     // setting the screen color
-    SDL_SetRenderDrawColor(m_renderer, screenColor->r, screenColor->g, screenColor->b, SDL_ALPHA_OPAQUE); // setting background color
+    setRenderDrawColor(m_renderer, m_screenColor);
     SDL_RenderClear(m_renderer); // clearing present renderer
     
-    // check collision of the ball with bricks
-    for (int i = 0; i < BRICK_AREA_X_NUMBER && !brickContact; ++i) {
-        for (int j = 0; j < BRICK_AREA_Y_NUMBER && !brickContact; ++j) {
-            switch (m_brickMap[i][j]->GetResistance()) {
-                case 0:
-                    break;
-                    
-                case 1:
-                case 2:
-                    
-                    brickRect.x = m_brickMap[i][j]->GetX();
-                    brickRect.y = m_brickMap[i][j]->GetY();
-                    brickContact = Collision::collisionCircleAABB(ballCircle, brickRect); // true if collision
-                    
-                    if (true == brickContact) {
-                        AB = Collision::rebound(brickRect, ballRect, oldSpeed);
+    // HANDLING BALL/BRICKS COLLISION
+    int xIndex = (m_ball->getX() / BRICK_WIDTH);
+    int yIndex = (m_ball->getY() / BRICK_HEIGHT);
+    
+    if (m_ball->isLaunched())
+    {
+        for (int i = (xIndex - 1); i <= (xIndex + 1)  && !brickContact; ++i) {
+            for (int j = (yIndex - 1); j <= (yIndex + 1) && !brickContact; ++j) {
+                
+                if ((i >= BRICK_AREA_X_ORIGIN_NUMBER) && (i <= BRICK_AREA_X_ORIGIN_NUMBER + BRICK_AREA_X_NUMBER)
+                        && (j >= BRICK_AREA_Y_ORIGIN_NUMBER) && (j <= BRICK_AREA_Y_ORIGIN_NUMBER + BRICK_AREA_Y_NUMBER))
+                {     
+                    switch (m_brickMap[i][j]->GetResistance()) {
                         
-                        A.x = AB.A.x; // segment AB where the ball will do the rebound
-                        A.y = AB.A.y;
-                        B.x = AB.B.x;
-                        B.y = AB.B.y;
-                        C.x = m_ball->getXCenter();
-                        C.y = m_ball->getYCenter();
-                        
-                        normal = Collision::getNormal(A, B, C); // we will the the projection of C on the AB segment, and then the normal
-                        // vector to the segment on this projection
-                        
-                        newSpeed = Collision::calculateVectorV2(oldSpeed, normal); // getting new speed following the incoming vector
-                        // speed, regarding the normal vector
-                        
-                        m_ball->setX_speed(newSpeed.x);
-                        m_ball->setY_speed(newSpeed.y); //
-                        --(*m_brickMap[i][j]); // decreasing resistance 1->0 or 2->1 after collision 
+                        case 0:
+                            break;
+                            
+                        case 1:
+                        case 2:
+                        case 3:
+                        case 4:
+                            
+                            brickRect.x = m_brickMap[i][j]->GetX();
+                            brickRect.y = m_brickMap[i][j]->GetY();
+                            brickContact = Collision::collisionCircleAABB(ballCircle, brickRect); // true if collision
+                            
+                            if (true == brickContact) {
+                                AB = Collision::rebound(brickRect, ballRect, oldSpeed);
+                                
+                                A.x = AB.A.x; // segment AB where the ball will do the rebound
+                                A.y = AB.A.y;
+                                B.x = AB.B.x;
+                                B.y = AB.B.y;
+                                C.x = m_ball->getXCenter();
+                                C.y = m_ball->getYCenter();
+                                
+                                normal = Collision::getNormal(A, B, C); // we will the the projection of C on the AB segment, and then the normal
+                                // vector to the segment on this projection
+                                
+                                newSpeed = Collision::calculateVectorV2(oldSpeed, normal); // getting new speed following the incoming vector
+                                // speed, regarding the normal vector
+                                
+                                if ((newSpeed.x >= - MIN_DEVIATION_RANGE && newSpeed.x <= 0) || (newSpeed.x <= MIN_DEVIATION_RANGE && newSpeed.x >= 0) )
+                                    ++m_blockCounter;
+                                else if ((newSpeed.y >= - MIN_DEVIATION_RANGE && newSpeed.y <= 0) || (newSpeed.y <= MIN_DEVIATION_RANGE && newSpeed.y >= 0) )
+                                    ++m_blockCounter;
+                                else
+                                    m_blockCounter = 0;
+                                if (m_blockCounter >= UNBLOCK_ACTIVATED )
+                                {
+                                    if ( newSpeed.x <= 0 )
+                                        newSpeed.x = newSpeed.x - MIN_DEVIATION;
+                                    else
+                                        newSpeed.x = newSpeed.x + MIN_DEVIATION;
+                                    if ( newSpeed.y <= 0 )
+                                        newSpeed.y = newSpeed.y - MIN_DEVIATION;
+                                    else 
+                                        newSpeed.y = newSpeed.y + MIN_DEVIATION;
+                                    m_blockCounter = 0;
+                                    cout << "Counter ACTIVATED xv : " << newSpeed.x << " / yv : " << newSpeed.y << endl;
+                                }
+                                if (isnan(newSpeed.x)) // should not occur but some collision bugs persist
+                                    newSpeed.x = -oldSpeed.x;
+                                if (isnan(newSpeed.y))
+                                    newSpeed.y = -oldSpeed.y;
+                                m_ball->setX_speed(newSpeed.x);
+                                m_ball->setY_speed(newSpeed.y);
+                                m_ball->setX(m_ball->getX() + newSpeed.x);
+                                m_ball->setY(m_ball->getY() + newSpeed.y);
+                                if (m_brickMap[i][j]->GetResistance() != 4)
+                                {
+                                    --(*m_brickMap[i][j]); // decreasing resistance after collision 
+                                    m_score = m_score + SCORE_INCREMENT;
+                                }
+                                checkBrickPresence();
+                            }
+                            break;
                     }
-                    break;
-                    
+                }
             }
-            
         }
     }
     
-    // ****** Render bricks ******
     
-    // Render the bricks after collision is made
-    buildBrickMap();
-    
-    SDL_RenderCopy(m_renderer, m_ballTexture, NULL, &ballRect); // copy the rectangle on the renderer
-    
-    // ****** Render the rackets ******
-    if (m_middleRacketPresent) // depends if we want a middle racket or not
-        racketsNumber = TOTAL_RACKET_NUMBER;
-    else
-        racketsNumber = BASE_RACKET_NUMBER;
-    
-    Point rotOrigin; // position of middle racket center
-    rotOrigin.x = m_rackets[MIDDLE]->getRacketCenter().x;
-    rotOrigin.y = m_rackets[MIDDLE]->getRacketCenter().y;
-    
-    for (int i = 0; i < racketsNumber; ++i) {
+    // HANDLING BALL_RACKETS COLLISIONS
+    if (m_ball->isLaunched() && !brickContact)
+    {
+        closestRacketIndex = getClosestRacket();
         
-        if (m_middleRacketPresent && (MIDDLE == i)) {
-            
-            racketRect.x = m_rackets[MIDDLE]->getX();
-            racketRect.y = m_rackets[MIDDLE]->getY();
-            racketRect.w = m_rackets[MIDDLE]->getW();
-            racketRect.h = m_rackets[MIDDLE]->getH();
-            
-            SDL_Texture * myText = SDL_CreateTexture(m_renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, RACKET_WIDTH, RACKET_HEIGHT);
-            
-            SDL_SetRenderTarget(m_renderer, myText);
-            SDL_SetRenderDrawColor(m_renderer, m_blueGreen->r, m_blueGreen->g, m_blueGreen->b, SDL_ALPHA_OPAQUE);
-            SDL_RenderFillRect(m_renderer, NULL);
-            SDL_SetRenderTarget(m_renderer, NULL);
-            
-            SDL_QueryTexture(myText, NULL, NULL, &racketRect.w, &racketRect.h);
-            
-            //render a rectangle rotated by middleRacketAngle
-            SDL_RenderCopyEx(m_renderer, myText, NULL, &racketRect, m_middleRacketAngle, NULL, SDL_FLIP_NONE);
-            
-        } else { // top bottom right and left rendering
-            racketRect.x = m_rackets[i]->getX();
-            racketRect.y = m_rackets[i]->getY();
-            racketRect.w = m_rackets[i]->getW();
-            racketRect.h = m_rackets[i]->getH();
-            setRenderDrawColor(m_renderer, m_darkBlueGreen);
-            SDL_RenderDrawLine(m_renderer, racketRect.x, racketRect.y, racketRect.x + racketRect.w, racketRect.y);
-            SDL_RenderDrawLine(m_renderer, racketRect.x + racketRect.w, racketRect.y, racketRect.x + racketRect.w, racketRect.y + racketRect.h);
-            SDL_RenderDrawLine(m_renderer, racketRect.x + racketRect.w, racketRect.y + racketRect.h, racketRect.x, racketRect.y + racketRect.h);
-            SDL_RenderDrawLine(m_renderer, racketRect.x, racketRect.y + racketRect.h, racketRect.x, racketRect.y);
-            fillRectGame(&racketRect, *m_blueGreen); // sets the color + draw the rectangle with it
-        }
+        racketRect.x = m_rackets[closestRacketIndex]->getX();
+        racketRect.y = m_rackets[closestRacketIndex]->getY();
+        racketRect.w = m_rackets[closestRacketIndex]->getW();
+        racketRect.h = m_rackets[closestRacketIndex]->getH();
         
-        
-        
-        // ****** Handle racket collision ****** 
-        if (i != MIDDLE)
-            contact = Collision::collisionCircleAABB(ballCircle, racketRect); // detects collision with the racket
-        else {
-            Circle rotatedBallCircle; // ghost ball for collision on a non rotated middle racket
-            
+        if (MIDDLE != closestRacketIndex)
+            contact = Collision::collisionCircleAABB(ballCircle, racketRect);
+        else
+        {
             rotatedBallCircle.radius = LITTLE_BALL_DIAMETER / 2;
             
             // ghost ball (rotated one) is the normal ball rotated from minus angle the racket has been rotated
-            rotatedBallCircle.x = rotOrigin.x + (ballCircle.x - rotOrigin.x) * cos(3.14 * m_middleRacketAngle / 180)
-                    + (ballCircle.y - rotOrigin.y) * sin(3.14 * m_middleRacketAngle / 180);
-            rotatedBallCircle.y = rotOrigin.y - (ballCircle.x - rotOrigin.x) * sin(3.14 * m_middleRacketAngle / 180)
-                    + (ballCircle.y - rotOrigin.y) * cos(3.14 * m_middleRacketAngle / 180);
+            rotatedBallCircle.x = rotOrigin.x + (ballCircle.x - rotOrigin.x) * cos(3.14 * m_rackets[MIDDLE]->getMiddleRacketAngle() / 180)
+                    + (ballCircle.y - rotOrigin.y) * sin(3.14 * m_rackets[MIDDLE]->getMiddleRacketAngle() / 180);
+            rotatedBallCircle.y = rotOrigin.y - (ballCircle.x - rotOrigin.x) * sin(3.14 * m_rackets[MIDDLE]->getMiddleRacketAngle() / 180)
+                    + (ballCircle.y - rotOrigin.y) * cos(3.14 * m_rackets[MIDDLE]->getMiddleRacketAngle() / 180);
             
             // the ghost ball has also its speed vector rotated
-            rotatedBallSpeed.x = (m_ball->getX_speed()) * cos(3.14 * m_middleRacketAngle / 180)
-                    + (m_ball->getY_speed()) * sin(3.14 * m_middleRacketAngle / 180);
-            rotatedBallSpeed.y = -(m_ball->getX_speed()) * sin(3.14 * m_middleRacketAngle / 180)
-                    + (m_ball->getY_speed()) * cos(3.14 * m_middleRacketAngle / 180);
+            rotatedBallSpeed.x = (m_ball->getX_speed()) * cos(3.14 * m_rackets[MIDDLE]->getMiddleRacketAngle() / 180)
+                    + (m_ball->getY_speed()) * sin(3.14 * m_rackets[MIDDLE]->getMiddleRacketAngle() / 180);
+            rotatedBallSpeed.y = -(m_ball->getX_speed()) * sin(3.14 * m_rackets[MIDDLE]->getMiddleRacketAngle() / 180)
+                    + (m_ball->getY_speed()) * cos(3.14 * m_rackets[MIDDLE]->getMiddleRacketAngle() / 180);
             
             // definition of the ghost Circle ball
-            SDL_Rect rotatedBallRect = {rotatedBallCircle.x - rotatedBallCircle.radius,
-            rotatedBallCircle.y - rotatedBallCircle.radius,
-            rotatedBallCircle.radius * 2,
-            rotatedBallCircle.radius * 2};
+            rotatedBallRect.x = rotatedBallCircle.x - rotatedBallCircle.radius;
+            rotatedBallRect.y = rotatedBallCircle.y - rotatedBallCircle.radius;
+            rotatedBallRect.w = rotatedBallCircle.radius * 2;
+            rotatedBallRect.h = rotatedBallCircle.radius * 2;
             
             //To display the ghost ball :
             //SDL_RenderDrawLine(renderer, rotatedBallCircle.x, rotatedBallCircle.y, rotatedBallCircle.x + 10 * rotatedBallSpeed.x, rotatedBallCircle.y + 10 * rotatedBallSpeed.y);
             //SDL_RenderCopy(renderer, this->ballTexture, NULL, &rotatedBallRect);
-            
-            Point closest; // to detect the closest point with the ghost ball on the non rotated racket
             
             // Find the unrotated closest x point from center of rotated circle
             if (rotatedBallCircle.x < racketRect.x)
@@ -362,151 +423,94 @@ void GameState::draw(){
             
             
             // Determine collision
-            float squareDistance = (rotatedBallCircle.x - closest.x) * (rotatedBallCircle.x - closest.x)
-            + (rotatedBallCircle.y - closest.y) * (rotatedBallCircle.y - closest.y);
+            squareDistance = (rotatedBallCircle.x - closest.x) * (rotatedBallCircle.x - closest.x)
+                    + (rotatedBallCircle.y - closest.y) * (rotatedBallCircle.y - closest.y);
             
             // if distance between the ghost ball and the closest point on the non rotated racket
             // is lower than the ball radius
             if (squareDistance <= rotatedBallCircle.radius * rotatedBallCircle.radius) {
                 contact = true; // Collision !
-                m_middleRacketRotationActivated = false; // rotation is deactivated during a brief moment
+                m_rackets[MIDDLE]->setMiddleRacketRotationActivated(false); // rotation is deactivated during a brief moment
             } else
                 contact = false; // othewise, no collision
             
-            if (squareDistance >= rotatedBallCircle.radius * rotatedBallCircle.radius + 2000) {
+            if (squareDistance >= rotatedBallCircle.radius * rotatedBallCircle.radius + 1000) {
                 // if the distance is greater than radius + an arbitrary constant
-                m_middleRacketRotationActivated = true; // we reactivate rotation
-                m_collisionActivated = true; // we reactivate collision
+                m_rackets[MIDDLE]->setMiddleRacketRotationActivated(true); // we reactivate rotation
             }
-            
-            if (contact && m_collisionActivated) { // if we detect a collision and collision is activated
-                
-                Vector newSpeedBeforeReturnRotation;
-                
-                // selection of the rebound segment
-                AB = Collision::rebound(racketRect, rotatedBallRect, rotatedBallSpeed);
-                
+        }
+        
+        
+        
+        if (contact) 
+        {
+            if (m_score > 0)
+                --m_score;
+            if (MIDDLE == closestRacketIndex)
+            {
+                AB = Collision::rebound(racketRect, rotatedBallRect, rotatedBallSpeed);// selection of the rebound segment
                 A.x = AB.A.x;
                 A.y = AB.A.y;
                 B.x = AB.B.x;
                 B.y = AB.B.y;
                 C.x = rotatedBallCircle.x;
                 C.y = rotatedBallCircle.y;
-                
                 normal = Collision::getNormal(A, B, C); // normal to the rebound segment
                 
                 // new speed of the ghost ball
                 newSpeedBeforeReturnRotation = Collision::calculateVectorV2(rotatedBallSpeed, normal);
                 
                 // we rotate the speed in the other direction to set the normal ball speed
-                newSpeed.x = newSpeedBeforeReturnRotation.x * cos(3.14 * m_middleRacketAngle / 180)
-                        - (newSpeedBeforeReturnRotation.y) * sin(3.14 * m_middleRacketAngle / 180);
-                newSpeed.y = (newSpeedBeforeReturnRotation.x) * sin(3.14 * m_middleRacketAngle / 180)
-                        + (newSpeedBeforeReturnRotation.y) * cos(3.14 * m_middleRacketAngle / 180);
+                newSpeed.x = newSpeedBeforeReturnRotation.x * cos(3.14 * m_rackets[MIDDLE]->getMiddleRacketAngle() / 180)
+                        - (newSpeedBeforeReturnRotation.y) * sin(3.14 * m_rackets[MIDDLE]->getMiddleRacketAngle() / 180);
+                newSpeed.y = (newSpeedBeforeReturnRotation.x) * sin(3.14 * m_rackets[MIDDLE]->getMiddleRacketAngle() / 180)
+                        + (newSpeedBeforeReturnRotation.y) * cos(3.14 * m_rackets[MIDDLE]->getMiddleRacketAngle() / 180);
             }
+            else
+            {
+                
+                A.x = m_rackets[closestRacketIndex]->getReboundSurface().A.x;
+                A.y = m_rackets[closestRacketIndex]->getReboundSurface().A.y;
+                B.x = m_rackets[closestRacketIndex]->getReboundSurface().B.x;
+                B.y = m_rackets[closestRacketIndex]->getReboundSurface().B.y;
+                C.x = ballCircle.x;
+                C.y = ballCircle.y;
+                
+                normal = Collision::getNormal(A, B, C); // get the normal
+                newSpeed = Collision::calculateVectorV2(oldSpeed, normal); //calculate new speed vector
+                
+                // get the ratio AC/AB, C being the contact point of the ball on a AB segment
+                tempRatio = getRacketContactRatio(A, B, C);
+                
+                // empiric and arbitrary speed modification following racket's speed
+                coeffSpeedModif = getSpeedModifCoeffFromContactRatio(tempRatio) + m_rackets[closestRacketIndex]->getRacketSpeed();
+                
+                newSpeed = m_rackets[closestRacketIndex]->modifySpeedVector(newSpeed, coeffSpeedModif, tempRatio, squareNormSpeed);
+                
+                
+            }
+            //
+            if (isnan(newSpeed.x)) // should not occur but some collision bugs persist
+                newSpeed.x = -oldSpeed.x;
+            if (isnan(newSpeed.y))
+                newSpeed.y = -oldSpeed.y;
+            m_ball->setX_speed(newSpeed.x);
+            m_ball->setY_speed(newSpeed.y);
+            m_ball->setX(m_ball->getX() + newSpeed.x);
+            m_ball->setY(m_ball->getY() + newSpeed.y);
         }
         
-        // collision with the other rackets 
-        if (contact && m_ball->isLaunched()) {
-            switch (i) {
-                case BOTTOM:
-                    A.x = m_rackets[i]->getX(); // AB segment where rebound is done 
-                    A.y = m_rackets[i]->getY();
-                    B.x = A.x + m_rackets[i]->getW();
-                    B.y = A.y;
-                    C.x = ballCircle.x; // C center of the ball during impact
-                    C.y = ballCircle.y;
-                    
-                    normal = Collision::getNormal(A, B, C);
-                    newSpeed = Collision::calculateVectorV2(oldSpeed, normal);
-                    
-                    tempRatio = getRacketContactRatio(A, B, C);
-                    
-                    // empiric and arbitrary speed modification following racket's speed
-                    coeffSpeedModif = getSpeedModifCoeffFromContactRatio(tempRatio) + m_rackets[i]->getRacketSpeed();
-                    
-                    // setting the new speed. 0.5 because we count from the middle of the racket.
-                    // if tempratio = 0.5 ( ie hit at the center of the racket ) then 
-                    // the new speed is not modified and is like a "normal" rebound
-                    newSpeed.x = newSpeed.x - coeffSpeedModif * (0.5 - tempRatio);
-                    
-                    // the other speed component is defined regarding the first one,
-                    // so that speed norm remains unchanged.
-                    newSpeed.y = -sqrt(abs(squareNormSpeed - newSpeed.x * newSpeed.x));
-                    break;
-                case TOP:
-                    // see above the BOTTOM case
-                    A.x = m_rackets[i]->getX();
-                    A.y = m_rackets[i]->getY() + m_rackets[i]->getH();
-                    B.x = A.x + m_rackets[i]->getW();
-                    B.y = A.y;
-                    C.x = ballCircle.x;
-                    C.y = ballCircle.y;
-                    
-                    normal = Collision::getNormal(A, B, C);
-                    newSpeed = Collision::calculateVectorV2(oldSpeed, normal);
-                    
-                    tempRatio = getRacketContactRatio(A, B, C);
-                    
-                    coeffSpeedModif = getSpeedModifCoeffFromContactRatio(tempRatio) + m_rackets[i]->getRacketSpeed();
-                    newSpeed.x = newSpeed.x - coeffSpeedModif * (0.5 - tempRatio);
-                    newSpeed.y = sqrt(abs(squareNormSpeed - newSpeed.x * newSpeed.x));
-                    break;
-                case LEFT:
-                    // see above the BOTTOM case
-                    A.x = m_rackets[i]->getX() + m_rackets[i]->getW();
-                    A.y = m_rackets[i]->getY();
-                    B.x = A.x;
-                    B.y = A.y + m_rackets[i]->getH();
-                    C.x = ballCircle.x;
-                    C.y = ballCircle.y;
-                    
-                    normal = Collision::getNormal(A, B, C);
-                    newSpeed = Collision::calculateVectorV2(oldSpeed, normal);
-                    
-                    tempRatio = getRacketContactRatio(A, B, C);
-                    
-                    coeffSpeedModif = getSpeedModifCoeffFromContactRatio(tempRatio) + m_rackets[i]->getRacketSpeed();
-                    newSpeed.y = newSpeed.y - coeffSpeedModif * (0.5 - tempRatio);
-                    newSpeed.x = sqrt(abs(squareNormSpeed - newSpeed.y * newSpeed.y));
-                    break;
-                case RIGHT:
-                    // see above the BOTTOM case
-                    A.x = m_rackets[i]->getX();
-                    A.y = m_rackets[i]->getY();
-                    B.x = A.x;
-                    B.y = A.y + m_rackets[i]->getH();
-                    C.x = ballCircle.x;
-                    C.y = ballCircle.y;
-                    normal = Collision::getNormal(A, B, C);
-                    newSpeed = Collision::calculateVectorV2(oldSpeed, normal);
-                    
-                    tempRatio = getRacketContactRatio(A, B, C);
-                    
-                    coeffSpeedModif = getSpeedModifCoeffFromContactRatio(tempRatio) + m_rackets[i]->getRacketSpeed();
-                    newSpeed.y = newSpeed.y - coeffSpeedModif * (0.5 - tempRatio);
-                    newSpeed.x = -sqrt(abs(squareNormSpeed - newSpeed.y * newSpeed.y));
-                    break;
-                case MIDDLE:
-                    break;
-                default:
-                    break;
-            }
-            if (m_collisionActivated) {
-                
-                m_ball->setX_speed(newSpeed.x);
-                m_ball->setY_speed(newSpeed.y);
-                
-                m_ball->setX(m_ball->getX() + newSpeed.x);
-                m_ball->setY(m_ball->getY() + newSpeed.y);
-            }
-        }
     }
     
-    SDL_RenderPresent(m_renderer); // displays the renderer where we put all the graphics before
-    checkBrickPresence();
+    if (m_score != m_pastScore) 
+    {
+        m_scoreText->changeText(to_string(m_score));
+        m_pastScore = m_score;
+        
+    }
+    buildBrickMap();
+    m_menu->draw();
 }
-
 
 /* Function : buildBrickMap
  * 
@@ -518,44 +522,9 @@ void GameState::draw(){
  */
 
 void GameState::buildBrickMap() {
-    
-    SDL_Rect brickRect;
-    brickRect.w = BRICK_WIDTH;
-    brickRect.h = BRICK_HEIGHT;
-    
-    for (int i = 0; i < BRICK_AREA_X_NUMBER; ++i) {
-        for (int j = 0; j < BRICK_AREA_Y_NUMBER; ++j) {
-            switch (m_brickMap[i][j]->GetResistance()) {
-                case 0:
-                    break;
-                    
-                case 1:
-                    brickRect.x = m_brickMap[i][j]->GetX();
-                    brickRect.y = m_brickMap[i][j]->GetY();
-                    
-                    fillRectGame(&brickRect, *m_yellow); // sets the color + draw the rectangle with it
-                    
-                    setRenderDrawColor(m_renderer, m_darkCobalt);
-                    SDL_RenderDrawLine(m_renderer, brickRect.x, brickRect.y, brickRect.x + brickRect.w, brickRect.y);
-                    SDL_RenderDrawLine(m_renderer, brickRect.x + brickRect.w, brickRect.y, brickRect.x + brickRect.w, brickRect.y + brickRect.h);
-                    SDL_RenderDrawLine(m_renderer, brickRect.x + brickRect.w, brickRect.y + brickRect.h, brickRect.x, brickRect.y + brickRect.h);
-                    SDL_RenderDrawLine(m_renderer, brickRect.x, brickRect.y + brickRect.h, brickRect.x, brickRect.y);
-                    
-                    break;
-                    
-                case 2:
-                    brickRect.x = m_brickMap[i][j]->GetX();
-                    brickRect.y = m_brickMap[i][j]->GetY();
-                    
-                    fillRectGame(&brickRect, *m_paleOrange);
-                    
-                    setRenderDrawColor(m_renderer, m_darkCobalt);
-                    SDL_RenderDrawLine(m_renderer, brickRect.x, brickRect.y, brickRect.x + brickRect.w, brickRect.y);
-                    SDL_RenderDrawLine(m_renderer, brickRect.x + brickRect.w, brickRect.y, brickRect.x + brickRect.w, brickRect.y + brickRect.h);
-                    SDL_RenderDrawLine(m_renderer, brickRect.x + brickRect.w, brickRect.y + brickRect.h, brickRect.x, brickRect.y + brickRect.h);
-                    SDL_RenderDrawLine(m_renderer, brickRect.x, brickRect.y + brickRect.h, brickRect.x, brickRect.y);
-                    break;
-            }
+    for (int i = BRICK_AREA_X_ORIGIN_NUMBER; i < BRICK_AREA_X_ORIGIN_NUMBER + BRICK_AREA_X_NUMBER; ++i) {
+        for (int j = BRICK_AREA_Y_ORIGIN_NUMBER; j < BRICK_AREA_Y_ORIGIN_NUMBER + BRICK_AREA_Y_NUMBER; ++j) {
+            m_brickMap[i][j]->draw();
         }
     }
 }
@@ -620,138 +589,77 @@ int GameState::getSpeedModifCoeffFromContactRatio(float contactRatio) {
 void GameState::checkBrickPresence() {
     
     m_won = true;
-    for (int i = 0; i < BRICK_AREA_X_NUMBER; ++i) {
-        for (int j = 0; j < BRICK_AREA_Y_NUMBER; ++j) {
+    for (int i = BRICK_AREA_X_ORIGIN_NUMBER ; i < BRICK_AREA_X_ORIGIN_NUMBER + BRICK_AREA_X_NUMBER; ++i) {
+        for (int j = BRICK_AREA_Y_ORIGIN_NUMBER; j < BRICK_AREA_Y_ORIGIN_NUMBER + BRICK_AREA_Y_NUMBER; ++j) {
             switch (m_brickMap[i][j]->GetResistance()) {
                 case 0:
+                case 4:
                     break;
                 case 1:
-                    m_won = false;
-                    break;
                 case 2:
+                case 3:
                     m_won = false;
                     break;
             }
         }
     }
     if (true == m_won) {
-
         m_won = false;
-        m_game.setCurrentState(SCORE_STATE);
+        m_stateContext.setScore(m_score);
+        m_stateContext.setMenuType(SCORE_MENU);
+        m_game.setCurrentState(MENU_STATE);
         
     }
     
 }
 
-/* Function : placeBall
+/* Function : clearBrickMap
  * 
- * Input : none
- * 
- * Output : none
- * 
- * Goal : place the ball on a random racket
+ * Goal : set m_brickmap resistances to 0
  */
-
-void GameState::placeBall() {
-    
-    m_initialRacketId = rand() % 4;
-    
-    m_ball->setInitialRacketId(m_initialRacketId);
-    
-    switch (m_initialRacketId) {
-        case BOTTOM:
-            m_ball->setX(m_rackets[BOTTOM]->getX() + RACKET_WIDTH / 2 - LITTLE_BALL_DIAMETER / 2);
-            m_ball->setY(m_rackets[BOTTOM]->getY() - LITTLE_BALL_DIAMETER);
-            break;
-        case TOP:
-            m_ball->setX(m_rackets[TOP]->getX() + RACKET_WIDTH / 2 - LITTLE_BALL_DIAMETER / 2);
-            m_ball->setY(m_rackets[TOP]->getY() + RACKET_HEIGHT);
-            break;
-        case LEFT:
-            m_ball->setX(m_rackets[LEFT]->getX() + RACKET_HEIGHT);
-            m_ball->setY(m_rackets[LEFT]->getY() + RACKET_WIDTH / 2 - LITTLE_BALL_DIAMETER / 2 - 0.1);
-            
-            break;
-        case RIGHT:
-            m_ball->setX(m_rackets[RIGHT]->getX() - LITTLE_BALL_DIAMETER);
-            m_ball->setY(m_rackets[RIGHT]->getY() + RACKET_WIDTH / 2 - LITTLE_BALL_DIAMETER / 2);
-            break;
+void GameState::clearBrickMap() {
+    for (int i = 0; i < NB_BRICKS_WIDTH; ++i) {
+        for (int j = 0; j < NB_BRICKS_HEIGHT; ++j) {
+            m_brickMap[i][j]->SetResistance(0);
+        }
     }
-    
-    m_ball->setPlaced(true);
 }
+
+
 
 
 void GameState::onKeyDown(SDL_Event* evt) {
     m_keys[ evt->key.keysym.sym ] = 1;
+    vector<IKeyboardListener*>::const_iterator it;
+    for (it = m_menu->getKeyboardListenerVector().begin(); it != m_menu->getKeyboardListenerVector().end(); ++it) 
+        (*it)->onKeyDown(evt);
 }
 
 void GameState::onKeyUp(SDL_Event* evt) {
     m_keys[ evt->key.keysym.sym ] = 0;
-    getProperRacket(evt->key.keysym.sym)->decelerate();
+    //getProperRacket(evt->key.keysym.sym)->decelerate();
+    vector<IKeyboardListener*>::const_iterator it;
+    for (it = m_menu->getKeyboardListenerVector().begin(); it != m_menu->getKeyboardListenerVector().end(); ++it) 
+        (*it)->onKeyUp(evt);
+    
+    // A listener object is missing here for the escape event. It can not be the state 
+    // itself as its Menu is an attribute, and destroying the state implies destruction of
+    // the Menu and what it contains. Escape event is thus handled here for the moment.
     if (SDLK_ESCAPE == evt->key.keysym.sym) {
-        
         m_levelSelected = false;
         m_ball->setLaunched(false);
         m_ball->setPlaced(false);
-        m_middleRacketAngle = 0;
+        m_rackets[MIDDLE]->setMiddleRacketAngle(0);
         
+        m_stateContext.setMenuType(LEVEL_CHOICE_MENU);
         m_game.setCurrentState(MENU_STATE);
     }
-}
-
-void GameState::fillRectGame(SDL_Rect* rc, int r, int g, int b) {
-    SDL_SetRenderDrawColor(m_renderer, r, g, b, SDL_ALPHA_OPAQUE);
-    SDL_RenderFillRect(m_renderer, rc);
-}
-
-void GameState::fillRectGame(SDL_Rect* rc, const Color& color) {
-    SDL_SetRenderDrawColor(m_renderer, color.r, color.g, color.b, SDL_ALPHA_OPAQUE);
-    SDL_RenderFillRect(m_renderer, rc);
 }
 
 void GameState::onQuit() {
     m_game.stop();
 }
 
-void GameState::update() {
-    if (m_keys[SDLK_LEFT]) {
-        m_rackets[BOTTOM]->moveLeft();
-    }
-    if (m_keys[SDLK_RIGHT]) {
-        m_rackets[BOTTOM]->moveRight();
-    }
-    if (m_keys[SDLK_UP]) {
-        m_rackets[RIGHT]->moveUp();
-    }
-    if (m_keys[SDLK_DOWN]) {
-        m_rackets[RIGHT]->moveDown();
-    }
-    if (m_keys[SDLK_z]) {
-        m_rackets[LEFT]->moveUp();
-    }
-    if (m_keys[SDLK_q]) {
-        m_rackets[TOP]->moveLeft();
-    }
-    if (m_keys[SDLK_s]) {
-        m_rackets[LEFT]->moveDown();
-    }
-    if (m_keys[SDLK_d]) {
-        m_rackets[TOP]->moveRight();
-    }
-    if (m_keys[SDLK_SPACE]) {
-        if (m_ball->isPlaced() && !m_ball->isLaunched()) {
-            m_ball->setInitialSpeed(m_initialRacketId);
-            m_ball->launch();
-        }
-        if (m_middleRacketRotationActivated) {
-            
-            m_middleRacketAngle = (m_middleRacketAngle + MID_RACKET_ANGLE_SPEED) % ANGLE_MODULO;
-            
-        }
-    }
-    
-}
 
 void GameState::setRenderDrawColor(SDL_Renderer * renderer, Color* color) {
     SDL_SetRenderDrawColor(renderer, color->r, color->g, color->b, SDL_ALPHA_OPAQUE);
@@ -760,38 +668,64 @@ void GameState::setRenderDrawColor(SDL_Renderer * renderer, Color* color) {
 void GameState::onEvent(SDL_Event* evt) {
     
     switch (evt->type) {
-        case SDL_QUIT: onQuit();
-        break;
-        case SDL_KEYDOWN: onKeyDown(evt);
-        break;
-        case SDL_KEYUP: onKeyUp(evt);
-        break;
-        
+        case SDL_QUIT: 
+            onQuit();
+            break;
+        case SDL_KEYDOWN: 
+            onKeyDown(evt);
+            break;
+        case SDL_KEYUP: 
+            onKeyUp(evt);
+            break;
+        default:
+            break;
     }
 }
+
+
+int GameState::getIntSqrDistance(int xa, int ya, int xb, int yb) {
+    return ((xa - xb)*(xa - xb) + (ya - yb)*(ya - yb));
+}
+
 Racket * GameState::getProperRacket(SDL_Keycode keyId) {
-    switch(keyId) {
-        case SDLK_LEFT:
-        case SDLK_RIGHT:
-            return m_rackets[BOTTOM];
-            break;
-        case SDLK_UP:
-        case SDLK_DOWN:
-            return m_rackets[RIGHT];
-            break;
-        case SDLK_z:
-        case SDLK_s:
-            return m_rackets[LEFT];
-            break;
-        case SDLK_q:
-        case SDLK_d:
-            return m_rackets[TOP];
-            break;
-        default : 
-            return m_rackets[BOTTOM];
-    }
+    if (keyId == SDLK_LEFT || keyId == SDLK_RIGHT) {
+        return m_rackets[BOTTOM];
+    } else if (keyId == SDLK_UP || keyId == SDLK_DOWN) {
+        return m_rackets[RIGHT];
+    } else if (keyId == SDLK_z || keyId == SDLK_s) {
+        return m_rackets[LEFT];
+    } else if (keyId == SDLK_q || keyId == SDLK_d) {
+        return m_rackets[TOP];
+    } else
+        return m_rackets[BOTTOM];
+    
 }
 
+void GameState::updateRacketsPositions() {
+    
+    vector<IKeyboardListener*>::const_iterator it;
+    for (it = m_menu->getKeyboardListenerVector().begin(); it != m_menu->getKeyboardListenerVector().end(); ++it) 
+        (*it)->onKeyPressed(m_keys);
+}
 
-
+T_RACKET_POSITION GameState::getClosestRacket()  {
+    map<T_RACKET_POSITION,int> distanceTable;
+    using pair_type = decltype(distanceTable)::value_type;
+    
+    distanceTable[BOTTOM] = getIntSqrDistance(m_ball->getX(),m_ball->getY(), m_rackets[BOTTOM]->getX(), m_rackets[BOTTOM]->getY() );
+    distanceTable[TOP] = getIntSqrDistance(m_ball->getX(),m_ball->getY(), m_rackets[TOP]->getX(), m_rackets[TOP]->getY() ); 
+    distanceTable[LEFT] = getIntSqrDistance(m_ball->getX(),m_ball->getY(), m_rackets[LEFT]->getX(), m_rackets[LEFT]->getY() ); 
+    distanceTable[RIGHT] = getIntSqrDistance(m_ball->getX(),m_ball->getY(), m_rackets[RIGHT]->getX(), m_rackets[RIGHT]->getY() ); 
+    distanceTable[MIDDLE] = getIntSqrDistance(m_ball->getX(),m_ball->getY(), m_rackets[MIDDLE]->getX(), m_rackets[MIDDLE]->getY() ); 
+    
+    auto pr = std::min_element
+    (
+    std::begin(distanceTable), std::end(distanceTable),
+            [] (const pair_type & p1, const pair_type & p2) {
+                return p1.second < p2.second;
+            }
+            );
+            return pr->first;
+            
+}
 

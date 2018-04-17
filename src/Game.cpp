@@ -9,7 +9,16 @@
  */
 
 #include "Game.h"
-
+#include "GameState.h"
+#include "MenuState.h"
+#include "EditState.h"
+#include "Fonts.h"
+#include "Const.h"
+#include "Types.h"
+#include <SDL_image.h>
+#include <cstdio>   
+#include <iostream>
+#include <string>
 
 using namespace std;
 
@@ -25,14 +34,14 @@ Game::Game()
         cout << "Error using TTF_Init()" << endl;
         return;
     }
-    
-    if (SDL_CreateWindowAndRenderer(DISPLAY_WIDTH, DISPLAY_HEIGHT, flags, &m_window, &m_renderer)) {
+    Fonts::openAllFonts();
+    if (SDL_CreateWindowAndRenderer(WINDOW_WIDTH, WINDOW_HEIGHT, flags, &m_window, &m_renderer)) {
         return;
     }
     
-    m_stateVector[MENU_STATE] = new MenuState(m_renderer, *this);
-    m_stateVector[GAME_STATE] = new GameState(m_renderer, *this);
-    m_stateVector[SCORE_STATE] = new ScoreState(m_renderer, *this);
+    m_stateVector[MENU_STATE] = new MenuState(m_renderer, *this, m_stateContext);
+    m_stateVector[GAME_STATE] = new GameState(m_renderer, *this,  m_stateContext);
+    m_stateVector[EDIT_STATE] = new EditState(m_renderer, *this,  m_stateContext);
     setCurrentState(MENU_STATE);
     
 }
@@ -53,7 +62,7 @@ Game::~Game() {
         SDL_DestroyWindow(m_window);
         m_window = NULL;
     }
-    
+    Fonts::closeAllFonts();
     SDL_Quit();
     IMG_Quit();
     TTF_Quit();
@@ -102,7 +111,7 @@ void Game::run() {
     
     SDL_Event event;
     while (m_running) {
-        
+        //speedtest__("Running test speed : ") {
         int timeElapsed = 0;
         if (SDL_PollEvent(&event)) {
             m_currentState->onEvent(&event);
@@ -114,7 +123,6 @@ void Game::run() {
             past = now;
             
             if (framesSkipped++ >= m_frameSkip) {
-                m_currentState->update();
                 m_currentState->draw();
                 ++fps;
                 framesSkipped = 0;
@@ -129,6 +137,7 @@ void Game::run() {
         SDL_Delay(1);
         
     }
+    
     stop();
 }
 

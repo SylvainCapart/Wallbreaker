@@ -6,51 +6,59 @@
  */
 
 #include "Ball.h"
+#include <string>
+#include <SDL.h>
+#include "Const.h"
+#include "Types.h"
+#include <cmath>
+#include <iostream>
 
 using namespace std;
 
-Ball::Ball() {
+Ball::Ball(SDL_Renderer * renderer, const char * textureFileName):m_x(0), m_y(0), m_xCenter(0), m_yCenter(0), m_xSpeed(0), m_ySpeed(0),
+m_launched(false), m_placed(false), m_renderer(renderer) {
     m_w = LITTLE_BALL_DIAMETER;
     m_h = LITTLE_BALL_DIAMETER;
     m_r = LITTLE_BALL_DIAMETER / 2;
-    m_x = 0;
-    m_y = 0;
-    m_xCenter = 0;
-    m_yCenter = 0;
-    m_xSpeed = 0;
-    m_ySpeed = 0;
-    m_launched = false;
-    m_placed = false;
-
+    m_ballRect.x = m_x;
+    m_ballRect.y = m_y;
+    m_ballRect.w = m_w;
+    m_ballRect.h = m_h;
+    m_ballTexture = IMG_LoadTexture(renderer, textureFileName);
+    if (NULL == m_ballTexture)
+    cerr << "Error charging ball graphics" << endl;
 }
 
 Ball::~Ball() {
+    SDL_DestroyTexture(m_ballTexture);
 }
 
 void Ball::setY_speed(float y_speed) {
-  
-    this->m_ySpeed = y_speed;
+ 
+    m_ySpeed = y_speed;
 
     // control of y speed component
-    if (this->m_ySpeed > MAX_Y_BALL_SPEED)
-        this->m_ySpeed = MAX_Y_BALL_SPEED;
-    if (this->m_ySpeed < - MAX_Y_BALL_SPEED)
-        this->m_ySpeed = - MAX_Y_BALL_SPEED;
+    if (m_ySpeed > MAX_Y_BALL_SPEED)
+        m_ySpeed = MAX_Y_BALL_SPEED;
+    if (m_ySpeed < - MAX_Y_BALL_SPEED)
+        m_ySpeed = - MAX_Y_BALL_SPEED;
     
- 
+
+
 }
 
 void Ball::setX_speed(float x_speed) {
-    
-    this->m_xSpeed = x_speed;
+
+    m_xSpeed = x_speed;
     
     // control of x speed component
-    if (this->m_xSpeed > MAX_X_BALL_SPEED)
-        this->m_xSpeed = MAX_X_BALL_SPEED;
-    if (this->m_xSpeed < - MAX_X_BALL_SPEED)
-        this->m_xSpeed = - MAX_X_BALL_SPEED;
+    if (m_xSpeed > MAX_X_BALL_SPEED)
+        m_xSpeed = MAX_X_BALL_SPEED;
+    if (m_xSpeed < - MAX_X_BALL_SPEED)
+        m_xSpeed = - MAX_X_BALL_SPEED;
     
- 
+
+    
 }
 
 
@@ -76,22 +84,26 @@ void Ball::launch() {
 
 void Ball::move() {
     
-    m_x = m_x + m_xSpeed;
-    m_y = m_y + m_ySpeed;
-    m_xCenter = m_x + m_r;
-    m_yCenter = m_y + m_r;
-    
-    
     if (m_xSpeed > MAX_X_BALL_SPEED)
         m_xSpeed = MAX_X_BALL_SPEED;
     if (m_ySpeed > MAX_Y_BALL_SPEED)
         m_ySpeed = MAX_Y_BALL_SPEED;
-    
+        
+    m_x = m_x + m_xSpeed;
+    m_y = m_y + m_ySpeed;
+    m_xCenter = m_x + m_r;
+    m_yCenter = m_y + m_r;
+
+
     if ((m_x + m_w < 0) || (m_x > WINDOW_WIDTH) || (m_y + m_h < 0) || (m_y > WINDOW_HEIGHT)) {
         m_launched = false;
         m_placed = false;
     }
     
+    if(isnan(m_x) || isnan(m_y)){ //should not happen or a bug is present.
+        m_launched = false;
+        m_placed = false;
+    }
 }
 
 /* Function : setInitialSpeed
@@ -101,10 +113,10 @@ void Ball::move() {
  * 
  */
 
-void Ball::setInitialSpeed(int racketId) {
+void Ball::setInitialSpeed() {
     float initialSpeed = INITIAL_SPEED;
     
-    switch (racketId) {
+    switch (m_initialRacketId) {
         case BOTTOM:
             m_xSpeed = 0;
             m_ySpeed = -initialSpeed;
@@ -124,38 +136,110 @@ void Ball::setInitialSpeed(int racketId) {
             m_xSpeed = -initialSpeed;
             m_ySpeed = 0;
             break;
+        case MIDDLE:
+            break;
+        default:
+            break;
     }
 }
 
-/* Function : moveRight, moveLeft, moveDown, moveUp
+
+void Ball::draw() const {
+    SDL_Rect ballRect = {m_x, m_y, m_w, m_h};
+    SDL_RenderCopy(m_renderer, m_ballTexture, NULL, &ballRect); // copy the rectangle on the renderer
+}
+
+void Ball::update(T_RACKET_POSITION racketPosition, Racket * rackets[TOTAL_RACKET_NUMBER]) {
+    if (!this->isLaunched()) {
+        switch (racketPosition) {
+            case BOTTOM:
+                m_x = rackets[BOTTOM]->getRacketCenter().x - LITTLE_BALL_DIAMETER / 2;
+                break;
+            case RIGHT:
+                m_y = rackets[RIGHT]->getRacketCenter().y - LITTLE_BALL_DIAMETER / 2;
+                break;
+            case LEFT:
+                m_y = rackets[LEFT]->getRacketCenter().y - LITTLE_BALL_DIAMETER / 2;
+                break;
+            case TOP:
+                m_x = rackets[TOP]->getRacketCenter().x - LITTLE_BALL_DIAMETER / 2;
+                break;
+            case MIDDLE: // MIDDLE cannot happen
+                break;
+            default: 
+                break;
+        }
+    } else
+        this->move();
+}
+
+/* Function : placeBall
+ * 
  * Input : none
+ * 
  * Output : none
- * Goal : for the ball to follow the racket when placed and not launched
+ * 
+ * Goal : place the ball on a random racket
  */
 
-void Ball::moveRight() {
-    m_x = m_x + RACKET_SPEED;
-    m_xCenter = m_x + m_r;
+T_RACKET_POSITION Ball::placeBall(Racket * rackets[TOTAL_RACKET_NUMBER]) {
+
+    m_initialRacketId = static_cast<T_RACKET_POSITION>(rand() % BASE_RACKET_NUMBER); //safe here
+    this->setInitialRacketId(m_initialRacketId);
+    switch (m_initialRacketId) {
+        case BOTTOM:
+            m_x = rackets[BOTTOM]->getX() + RACKET_WIDTH / 2 - LITTLE_BALL_DIAMETER / 2;
+            m_y = rackets[BOTTOM]->getY() - LITTLE_BALL_DIAMETER;
+            break;
+        case TOP:
+            m_x = rackets[TOP]->getX() + RACKET_WIDTH / 2 - LITTLE_BALL_DIAMETER / 2;
+            m_y = rackets[TOP]->getY() + RACKET_HEIGHT;
+            break;
+        case LEFT:
+            m_x = rackets[LEFT]->getX() + RACKET_HEIGHT;
+            m_y = rackets[LEFT]->getY() + RACKET_WIDTH / 2 - LITTLE_BALL_DIAMETER / 2 ;
+            break;
+        case RIGHT:
+            m_x = rackets[RIGHT]->getX() - LITTLE_BALL_DIAMETER;
+            m_y = rackets[RIGHT]->getY() + RACKET_WIDTH / 2 - LITTLE_BALL_DIAMETER / 2;
+            break;
+        default: // MIDDLE cannot happen
+            break;
+    }
     
+    this->setPlaced(true);
+    return m_initialRacketId;
 }
 
-void Ball::moveLeft() {
-    m_x = m_x - RACKET_SPEED;
-    m_xCenter = m_x + m_r;
-    
+void Ball::setBallRect(const SDL_Rect & ballRect) {
+    m_ballRect = ballRect;
 }
 
-void Ball::moveDown() {
-    m_y = m_y + RACKET_SPEED;
-    
-    m_yCenter = m_y + m_r;
+SDL_Rect Ball::getBallRect() const {
+    return m_ballRect;
 }
 
-void Ball::moveUp() {
-    m_y = m_y - RACKET_SPEED;
-    
-    m_yCenter = m_y + m_r;
+void Ball::onKeyDown(SDL_Event* evt) {
+
+}
+
+void Ball::onKeyPressed(std::map<int, int>& keyMap) {
+
 }
 
 
+void Ball::onKeyUp(SDL_Event* evt) {
+    switch (evt->key.keysym.sym)
+    {
+        case SDLK_SPACE :
+            if(!isLaunched() && isPlaced())
+            {
+                setInitialSpeed();
+                launch();
+            }
+            break;
+        default:
+            break;
+    }
+}
 

@@ -11,7 +11,9 @@
  */
 
 #include "Collision.h"
-#include <vector>
+#include "Const.h"
+#include <iostream>
+
 
 using namespace std;
 
@@ -60,7 +62,7 @@ bool Collision::collisionCircleAABB(const Circle& C1, const SDL_Rect& box1) {
  * Input : int cursor_x, int cursor_y : position of a point
  *         const SDL_Rect& box : a rectangle
  * Output : a boolean worth true if the point is in the rectangle
- * Goal : detect the presence of a point ina  rectangle
+ * Goal : detect the presence of a point in a rectangle
  */
 
 bool Collision::collisionPointAABB(int cursor_x, int cursor_y, const SDL_Rect& box) {
@@ -286,7 +288,7 @@ SegmentPoints Collision::rebound(const SDL_Rect & obstacle, const SDL_Rect & rec
         else if (ballSpeed.x <= 0 && ballSpeed.y > 0)
             AB = getBrickSegment(obstacle, OBSTACLE_TOP);
         else if (ballSpeed.x > 0 && ballSpeed.y > 0) {
-            if (abs(ballSpeed.x) > abs(ballSpeed.y))
+            if (fabs(ballSpeed.x) > fabs(ballSpeed.y))
                 AB = getBrickSegment(obstacle, OBSTACLE_LEFT);
             else
                 AB = getBrickSegment(obstacle, OBSTACLE_TOP);
@@ -294,7 +296,7 @@ SegmentPoints Collision::rebound(const SDL_Rect & obstacle, const SDL_Rect & rec
             AB = getBrickSegment(obstacle, OBSTACLE_TOP);
         }
 
-
+        cout << "TOP LEFT" << endl;
     } else if (rectBallCenter.x >= (obstacle.x + obstacle.w) && rectBallCenter.y <= obstacle.y) 
         // ball is placed at the TOP RIGHT of the brick
     {
@@ -303,14 +305,14 @@ SegmentPoints Collision::rebound(const SDL_Rect & obstacle, const SDL_Rect & rec
         else if (ballSpeed.x < 0 && ballSpeed.y <= 0)
             AB = getBrickSegment(obstacle, OBSTACLE_RIGHT);
         else if (ballSpeed.x < 0 && ballSpeed.y > 0) {
-            if (abs(ballSpeed.x) > abs(ballSpeed.y))
+            if (fabs(ballSpeed.x) > fabs(ballSpeed.y))
                 AB = getBrickSegment(obstacle, OBSTACLE_RIGHT);
             else
                 AB = getBrickSegment(obstacle, OBSTACLE_TOP);
         } else {
             AB = getBrickSegment(obstacle, OBSTACLE_TOP);
         }
-
+cout << "TOP RIGHT" << endl;
     } else if (rectBallCenter.x <= (obstacle.x) && rectBallCenter.y >= (obstacle.y + obstacle.h)) 
         // ball is placed at the BOTTOM LEFT of the brick
     {
@@ -319,13 +321,14 @@ SegmentPoints Collision::rebound(const SDL_Rect & obstacle, const SDL_Rect & rec
         else if (ballSpeed.x <= 0 && ballSpeed.y < 0)
             AB = getBrickSegment(obstacle, OBSTACLE_BOTTOM);
         else if (ballSpeed.x > 0 && ballSpeed.y < 0) {
-            if (abs(ballSpeed.x) > abs(ballSpeed.y))
+            if (fabs(ballSpeed.x) > fabs(ballSpeed.y))
                 AB = getBrickSegment(obstacle, OBSTACLE_LEFT);
             else
                 AB = getBrickSegment(obstacle, OBSTACLE_BOTTOM);
         } else {
             AB = getBrickSegment(obstacle, OBSTACLE_BOTTOM);
         }
+        cout << "BOT LEFT" << endl;
 
     } else if (rectBallCenter.x >= (obstacle.x + obstacle.w) && rectBallCenter.y >= (obstacle.y + obstacle.h)) // ball is placed at the BOTTOM RIGHT of the brick
     {
@@ -334,14 +337,14 @@ SegmentPoints Collision::rebound(const SDL_Rect & obstacle, const SDL_Rect & rec
         else if (ballSpeed.x < 0 && ballSpeed.y >= 0)
             AB = getBrickSegment(obstacle, OBSTACLE_RIGHT);
         else if (ballSpeed.x < 0 && ballSpeed.y < 0) {
-            if (abs(ballSpeed.x) <= abs(ballSpeed.y))
+            if (fabs(ballSpeed.x) <= fabs(ballSpeed.y))
                 AB = getBrickSegment(obstacle, OBSTACLE_BOTTOM);
             else
                 AB = getBrickSegment(obstacle, OBSTACLE_RIGHT);
         } else {
             AB = getBrickSegment(obstacle, OBSTACLE_BOTTOM);
         }
-
+cout << "BOT RIGHT" << endl;
     } else if ((rectBallCenter.x <= obstacle.x) && (obstacle.y < rectBallCenter.y) && (rectBallCenter.y < (obstacle.y + obstacle.h))) 
         // ball is placed at the LEFT of the brick
     {
@@ -366,13 +369,14 @@ SegmentPoints Collision::rebound(const SDL_Rect & obstacle, const SDL_Rect & rec
     else if ((obstacle.x <= rectBallCenter.x) && (rectBallCenter.x <= (obstacle.x + obstacle.w)) && (rectBallCenter.y >= obstacle.y) && (rectBallCenter.y <= (obstacle.y + obstacle.h))) // ball is INSIDE
     {
         //this case (BALL INSIDE) should not happen and is here for testing reasons.
-        
+        cout << "INSIDE" << endl;
         AB.A.x = 0;
         AB.A.y = 0;
         AB.B.x = 0;
         AB.B.y = 0;
 
     } else {
+        cout << "WEIRD" << endl;
         //this case (ELSE CASE) should not happen and is here for testing reasons.
 
         AB.A.x = 0;
@@ -414,8 +418,8 @@ Point Collision::projectionI(const Point& A, const Point& B, const Point& C) {
 }
 
 float Collision::getDistanceBetweenTwoPoints(const Point& A, const Point& B) {
-    float a = abs(A.x - B.x);
-    float b = abs(A.y - B.y);
+    float a = fabs(A.x - B.x);
+    float b = fabs(A.y - B.y);
 
     return sqrt((a * a) + (b * b));
 }

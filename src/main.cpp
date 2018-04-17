@@ -8,7 +8,7 @@
  * 
  * DONE v0.2 : for each state, implement a vector of IDrawable 
  * 
- * TODO v0.3 : feature
+ * TODO v0.4 : feature
  * Modify the Ball * ball variable or add another variable (may be a List<Ball*>)
  * to handle a multiple ball effect.
  * 
@@ -16,8 +16,11 @@
  * Replace the actual brickMap containing ints by a proper brickMap that is a 
  * 2D table containing Brick classes.
  * 
- * TODO v0.3 : feature
- * Implement a score/lives system.
+ * DONE v0.3 : feature
+ * Implement a score system.
+ * 
+ * DONE v0.4 : feature
+ * Implement a lives system.
  * 
  * DONE v0.2 : implement the pattern state for Game
  * 
@@ -37,7 +40,7 @@
  * Handle a bug causing the ball to perform multiple hits on the same bricks, or 
  * to perform several hits on different bricks.
  * 
- * TODO v0.3 : debug
+ * DONE v0.3 : debug
  * Handle a bug causing the ball to not escape the middle racket when the player
  * make it rotate and a collision occurs. Therefore the ball after the rebound, 
  * is considered to be still in collision with the segment and a new normal vector 
@@ -47,18 +50,18 @@
  * DONE v0.1 : debug
  * Handle a bug causing the end screen to be displayed when not needed.
  * 
- * TODO v0.3 : improvement
+ * TODO v0.4 : improvement
  * Handle ball collision on the sides of the rackets, which causes the ball to 
  * enter inside the racket.
  * 
- * TODO v0.3 : feature
+ * DONE v0.3 : feature
  * Implement an edit mode, save and load different levels
  * 
  * Created on 29 décembre 2016, 10:03
  */
 
-#include <cstdlib>
 #include <iostream>
+#include <string>
 #include <stdlib.h>
 #include <stdio.h>
 #include <SDL.h>
@@ -66,13 +69,15 @@
 #include "Const.h"
 #include "Types.h"
 #include "Game.h"
-
+#include "EditState.h"
 using namespace std;
+
 
 int main(int argc, char** argv)
 {
     srand(time(NULL));
     Game game;
     game.start();
+    return 0;
   
 }
