@@ -17,11 +17,9 @@
 #ifndef ISTATE_H
 #define ISTATE_H
 
-#include "Const.h"
-#include "Types.h"
-#include "IDrawable.h"
+#include <SDL.h>
 
-class Game;
+//class Game;
 
 class IState  {
 public:
@@ -29,7 +27,6 @@ public:
     virtual void draw() = 0;
     virtual void onQuit() = 0;
     virtual void onEvent(SDL_Event* evt) = 0;
-    virtual void update() = 0;
     virtual void init() = 0;
 private:
     

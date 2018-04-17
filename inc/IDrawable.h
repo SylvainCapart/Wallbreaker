@@ -14,15 +14,17 @@
 #ifndef IDRAWABLE_H
 #define IDRAWABLE_H
 
-#include "Const.h"
-#include "Types.h"
-#include <iostream>
+#include "Colors.h"
+#include "Fonts.h"
+#include <SDL_image.h>
+#include <SDL_ttf.h>
+#include <SDL.h>
 
 class IDrawable {
 public:
     virtual ~IDrawable() {} 
     virtual void draw() const = 0;
-    virtual bool detectSelection(int x, int y) const = 0;
+
 private:
     
 };

@@ -15,34 +15,23 @@
 #define GAMESTATE_H
 
 #include "IState.h"
-#include <SDL.h>
-#include <SDL_image.h>
-#include <SDL_ttf.h>
-
-#include <cstdio>  
-#include <map>  
-#include <list>
-#include <cmath>
-#include <iostream>
-#include <string>
 #include "Ball.h"
 #include "Racket.h"
 #include "Const.h"
 #include "Types.h"
-#include "IState.h"
+#include "Menu.h"
 #include "IDrawable.h"
-#include "GameState.h"
-#include "MenuState.h"
-#include "ScoreState.h"
+#include "Text.h"
+#include "Game.h"
 #include "Brick.h"
-#include "Collision.h"
-#include <assert.h>
+#include "StateContext.h"
+#include <map>  
 
 class Game;
 
 class GameState : public IState{
 public:
-    GameState(SDL_Renderer *renderer, Game & game);
+    GameState(SDL_Renderer *renderer, Game & game, StateContext & stateContext);
 
     virtual ~GameState();
 
@@ -52,25 +41,12 @@ public:
     void onKeyDown(SDL_Event* evt);
     void onKeyUp(SDL_Event* evt);
     void onQuit();
-    /// \goal : update the screen following the keys pressed
-    void update();
     void init();
 
-    /// \param keyId : ID of the key pressed
-    /// \return : the racket corresponding to the key pressed
-    Racket * getProperRacket(SDL_Keycode keyId);
-    
     /// \goal : check if the resistance of the bricks is not equal to 0 for all the bricks.
     /// If it is the case, change the state.
     void checkBrickPresence();
-    
-    /// \goal : place the ball on a random racket
-    void placeBall();
-    
-    /// \goal : fill a rectangle with a color
-    void fillRectGame(SDL_Rect* rc, int r, int g, int b );  
-    void fillRectGame(SDL_Rect* rc, const Color& color); 
-    
+
     /// \goal : draw the map of bricks
     void buildBrickMap();
     
@@ -80,42 +56,57 @@ public:
     /// \goal : get an arbitrary coeff following contactRatio
     int getSpeedModifCoeffFromContactRatio(float contactRatio);
     
-    /// \goal : load a level (series of 0,1 or 2 in a txt file) into the map of bricks
-    int  loadLevel(Brick * brickMap[BRICK_AREA_X_NUMBER][BRICK_AREA_Y_NUMBER]);
+    /// \goal : load a random level into the map of bricks
+    void  loadRandomLevel(Brick * brickMap[NB_BRICKS_WIDTH][NB_BRICKS_HEIGHT]);
     
+    /// \goal : load a level (series of numbers in a txt file) into the map of bricks
+    bool  loadFileLevel(Brick * brickMap[NB_BRICKS_WIDTH][NB_BRICKS_HEIGHT], std::string & fileName);
+
     /// \param renderer : renderer where we draw graphics
     /// \param color : color of the background
     /// \goal : set background color
     void setRenderDrawColor(SDL_Renderer * renderer, Color * color);
     
+    /// \param xa, ya : point A coordinates
+    /// \param xb, yb : point B coordinates
+    /// \goal : return D², square distance between A and B
+    int getIntSqrDistance(int xa, int ya, int xb, int yb);
+    
+    /// \goal : set resistances of the brickMap to 0
+    void clearBrickMap();
+    
+    std::string to_string(int i);
+    Racket * getProperRacket(SDL_Keycode keyId);
+    void updateRacketsPositions();
+    
+    /// \returns : the index of the closest racket to the ball
+    /// \goal : in order to avoid detecting collision with the other rackets
+    T_RACKET_POSITION getClosestRacket() ;
+    
+
 
 private:
-    int m_levelId; // id of the level we want to load
     SDL_Renderer * m_renderer; // renderer where we draw the graphics
     Game & m_game; // reference to the class that holds the state 
     std::map<int,int> m_keys; // map of keys to know which one is up or done
     Racket * m_rackets[TOTAL_RACKET_NUMBER]; // table of all rackets
-    SDL_Texture * m_ballTexture; // texture of the ball (its image)
+    
+    StateContext & m_stateContext; // state context is used to pass load type, score and menu type between states
 
     Ball * m_ball; // one ball for the actual version
-    Brick * m_brickMap[BRICK_AREA_X_NUMBER][BRICK_AREA_Y_NUMBER]; // 2D table containing O 1 or 2
-    int m_initialRacketId; // initial racket where the ball is placed
-    int m_middleRacketAngle; // angle of rotation for the middle racket
-    bool m_middleRacketPresent; // mode with middle racket or not
-    bool m_middleRacketRotationActivated; // middle racket rotation activation or inhibition 
-    bool m_collisionActivated; // ball collision activated or not
+    Brick * m_brickMap[NB_BRICKS_WIDTH][NB_BRICKS_HEIGHT]; // 2D table containing O 1 or 2
+    T_RACKET_POSITION m_initialRacketId; // initial racket where the ball is placed
+    bool m_middleRacketPresent; // mode with middle racket or not. Not used yet.
     bool m_levelSelected; // level has been chosen or not
     bool m_won; // all bricks have been hit or not
-    
-    Color * m_cobalt;
-    Color * m_red;
-    Color * m_blueGreen;
-    Color * m_darkBlueGreen;
-    Color * m_yellow;
-    Color * m_paleOrange;
-    Color * m_green;
-    Color * m_black;
-    Color * m_darkCobalt;
+    Menu * m_menu;
+    unsigned int m_score;
+    int32_t m_past;
+    unsigned int m_pastScore;
+    Text * m_scoreText;
+    Color * m_screenColor;
+    int m_blockCounter; // to prevent a ball from being blocked : after 3 hits with the x speed or y speed
+    // near 0, modify a bit the speed vector of the ball
 };
 
 #endif /* GAMESTATE_H */

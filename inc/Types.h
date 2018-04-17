@@ -12,11 +12,11 @@
 
 #include <ostream>
 #include <SDL.h>
+#include "Const.h"
 
 class Color { // This class could have its own .h and .cpp
 public:
-    int r, g, b;
-
+    Uint8 r, g, b;
     Color(int r, int g, int b) : r(r), g(g), b(b) {
     }
 };
@@ -87,20 +87,20 @@ struct Vector {
         this->x = x;
         this->y = y;
     }
+    Vector (const Vector &vect)
+    {
+        this->x = vect.x;
+        this->y = vect.y;
+    }
+    Vector& operator =(Vector const& vect) {
+        this->x = vect.x;
+        this->y = vect.y;
+        return *this;
+    }
 };
 
 
-
-enum {
-    DISPLAY_WIDTH = WINDOW_WIDTH
-    , DISPLAY_HEIGHT = WINDOW_HEIGHT
-    , UPDATE_INTERVAL = 1000 / 60
-    , RACKET_SPEED = 1
-};
-
-
-
-enum ORIENTATION { // orientation of the rackets
+enum T_ORIENTATION { // orientation of the rackets
     HORIZONTAL,
     VERTICAL
 };
@@ -111,12 +111,26 @@ enum AXIS {
     YAXIS
 };
 
-enum POSITION { // position of a racket
-    BOTTOM,
-    TOP,
-    LEFT,
-    RIGHT,
-    MIDDLE
+enum T_RACKET_POSITION { // position of a racket
+    BOTTOM = 0,
+    TOP = 1,
+    LEFT = 2,
+    RIGHT = 3,
+    MIDDLE = 4,
+    POSITION_NB_ = (MIDDLE +1)
+};
+
+enum T_KEY_BIND {
+    K_UP,
+    K_DOWN,
+    K_LEFT,
+    K_RIGHT,
+    K_Z,
+    K_S,
+    K_Q,
+    K_D,
+    K_SPACE,
+    K_NULL
 };
 
 enum OBSTACLE_SEGMENT { // position of a segment on a SDL_rect obstacle
@@ -136,17 +150,46 @@ enum BUTTON_STATE { // state of the button following mouse actions
 enum STATE { // states possible for a IState
     MENU_STATE,
     GAME_STATE,
-    SCORE_STATE
+    EDIT_STATE
 };
 
-enum BUTTON_ID {
-    MENU_START,
-    MENU_QUIT
+enum T_MENU_STATE { // states possible for the main menu
+    MAIN_MENU,
+    LEVEL_CHOICE_MENU,
+    SCORE_MENU
+};
+
+enum MOUSE_LISTENER_ID {
+    B_MENU_START,
+    B_MENU_QUIT,
+    B_RANDOM_LEVEL,
+    B_DEMO_LEVEL,
+    B_EDIT_LEVEL,
+    B_BACK_FROM_LEVEL_CHOICE,
+    B_BACK_FROM_EDIT,
+    B_PLAY_EDITED_LEVEL,
+    B_CLEAR_EDITED_LEVEL
 };
 
 enum DRAWABLE_TYPE {
     BUTTON_TYPE,
     TEXT_TYPE
+};
+
+enum T_LOAD_LEVEL {
+    RANDOM_LEVEL,
+    DEMO_LEVEL,
+    EDIT_LEVEL
+};
+
+enum T_GAME_MODE {
+    PLAY_MODE,
+    EDIT_MODE
+};
+
+enum T_FONT {
+    ARROW_FONT,
+    INFO_FONT
 };
 
 #endif /* TYPES_H */

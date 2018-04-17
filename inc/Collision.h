@@ -8,10 +8,9 @@
 #ifndef COLLISION_H
 #define COLLISION_H
 
-#include "Ball.h"
-#include <SDL.h>
-#include "Const.h"
 #include "Types.h"
+#include <vector>
+#include <SDL.h>
 
 /* Except the rebound() function, this class is inspired by the two first chapters of the excellent guide
  * "Théorie des collisions" written by "Fred" on Openclassrooms.

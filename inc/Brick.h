@@ -17,16 +17,24 @@
 #ifndef BRICK_H
 #define	BRICK_H
 
-#include <SDL.h>
-#include "Const.h"
 
-class Brick {
+#include "IDrawable.h"
+
+class Brick : public IDrawable{
 public:
+
+    virtual ~Brick();
+
+    /// \goal : true if (x,y) belongs to the IDrawable rectangle
+    bool detectSelection(int x, int y) const;
+
+    /// \goal : draw the IDrawable
+    void draw() const;
 
     /// \param x : x coordinate of the origin of the SDL_Rect corresponding to the brick
     /// \param y : y coordinate of the origin of the SDL_Rect corresponding to the brick
     /// \param resistance : number of times the brick shall be hit before disappearing
-    Brick(int x, int y, int resistance);
+    Brick(int x, int y, int resistance, SDL_Renderer * renderer);
 
     /// \goal : getter and setter for m_resistance
     void SetResistance(int resistance) {this->m_resistance = resistance;}
@@ -34,10 +42,13 @@ public:
     
     /// \goal : overriding -- to decrease the brick's resistance
     Brick& operator --() {
+        if (this->m_resistance >= 0 && this->m_resistance < 4)
         --this->m_resistance;
         return *this;
     }
 
+    void fillRectGame(SDL_Rect* rc, const Color& color) const;
+    
     void SetH(int h) {this->m_h = h;}
     int GetH() const {return m_h;}
     
@@ -53,7 +64,8 @@ public:
 private:
     int m_x, m_y, m_w, m_h; // m_x and m_y -> Rectangle origin (not the center of the brick)
     int m_resistance; // number of times the brick shall be hit before disappearing
-    
+    SDL_Rect m_brickRect; //rectangle corresponding to the brick
+    SDL_Renderer * m_renderer;
 };
 
 #endif	/* BRICK_H */

@@ -12,24 +12,10 @@
 #define	GAME_H
 
 #include <SDL.h>
-#include <SDL_image.h>
-#include <SDL_ttf.h>
-
-#include <cstdio>   
-#include <iostream>
-#include <string>
-#include "Const.h"
-#include "Types.h"
 #include "IState.h"
-#include "GameState.h"
-#include "MenuState.h"
-#include "ScoreState.h"
-#include <assert.h>
-
-
+#include "StateContext.h"
 
 // See Game.cpp for functionnal description
-
 class Game {
 public:
     Game();  
@@ -58,7 +44,8 @@ private:
     IState * m_stateVector[STATE_NUMBER]; // table of IState*, holding all possible states of the game
     SDL_Window * m_window; // window needed to support graphics creation
     SDL_Renderer * m_renderer; // renderer where we draw graphics
-
+    StateContext m_stateContext; // state context is used to pass load type, score and menu type between states
+    
     
 };  
 

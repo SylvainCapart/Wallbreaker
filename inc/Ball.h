@@ -8,16 +8,14 @@
 #ifndef BALL_H
 #define	BALL_H
 
-#include <string>
-#include <SDL.h>
-#include "Const.h"
-#include "Types.h"
-#include <cmath>
-#include <iostream>
+#include "IDrawable.h"
+#include "Racket.h"
 
-class Ball {
+class Ball: public IDrawable, public IKeyboardListener {
 public:
-    Ball();
+    /// \param renderer : where to draw the ball
+    /// \param  textureFileName : name of image file ("img/something.png")
+    Ball(SDL_Renderer * renderer, const char * textureFileName); // const char * to avoid initializing a string first
     virtual ~Ball();
     
     /// \param h : height (int) of the SDL_Rect corresponding to the ball
@@ -57,7 +55,7 @@ public:
     float getX() const {return m_x;}
     
     /// \param initialRacketId : int, ID of one of the rackets
-    void setInitialRacketId(int initialRacketId) {this->m_initialRacketId = initialRacketId;}
+    void setInitialRacketId(T_RACKET_POSITION initialRacketId) {this->m_initialRacketId = initialRacketId;}
 
     /// \goal : triggers the launch of the ball while indicating it is not placed anymore on the racket
     void launch();
@@ -67,9 +65,8 @@ public:
     ///         checks position limits and reinitiate the ball if it goes past the borders
     void move();
     
-    /// \param racketId : int, ID of a racket
     /// \goal : following the racket, give the ball an orthogonal speed;
-    void setInitialSpeed(int racketId);
+    void setInitialSpeed();
 
     /// \return : float, y component of the ball speed
     float getY_speed() const {return m_ySpeed;}
@@ -82,13 +79,6 @@ public:
     
     /// \param x_speed : setting x speed of the ball, float
     void setX_speed(float x_speed);
-    
-    /// \function : moveRight, moveLeft, moveDown, moveUp
-    /// \goal : for the ball to follow the racket when placed and not launched 
-    void moveRight();
-    void moveLeft();
-    void moveDown();
-    void moveUp();
 
     /// \goal : return y coordinate of the ball center 
     float getYCenter() const {return m_yCenter;}
@@ -96,29 +86,51 @@ public:
     /// \goal : return x coordinate of the ball center 
     float getXCenter() const {return m_xCenter;}
 
+    /// \goal : IDrawable method : draw the object
+    void draw() const;
+
+    /// \parameter racketPosition : when the ball is not launched, side of the racket
+    /// where the ball is placed
+    /// \parameter rackets : pointer to a table containing the rackets data
+    /// \goal : update ball position
+    void update(T_RACKET_POSITION racketPosition, Racket * rackets[TOTAL_RACKET_NUMBER]);
+
+    /// \parameter rackets : pointer to a table containing the rackets data
+    /// \returns the side of the chosen racket as a T_RACKET_POSITION, among the 4
+    /// base rackets
+    /// \goal : place the ball on a random racket
+    T_RACKET_POSITION placeBall(Racket * rackets[TOTAL_RACKET_NUMBER]);
+    
+    void setBallRect(const SDL_Rect & ballRect);
+    SDL_Rect getBallRect() const;
+    
+    virtual void onKeyDown(SDL_Event* evt);
+    virtual void onKeyUp(SDL_Event* evt);
+    virtual void onKeyPressed(std::map<int, int>& keyMap);
+
+
+
+    
     
 private:
-    float m_x; //X origin of the ball drawing (same origin as the corresponding SDL_Rect)
-    float m_y; //Y origin of the ball drawing (same origin as the corresponding SDL_Rect)
+    int m_x; //X origin of the ball drawing (same origin as the corresponding SDL_Rect)
+    int m_y; //Y origin of the ball drawing (same origin as the corresponding SDL_Rect)
+    // DONE comment : relevancy of float should be here examined
     int m_w; // Width of the drawing area
     int m_h; // Height of the drawing area
+    SDL_Rect m_ballRect;
     
     float m_xCenter; // X center component 
     float m_yCenter; // Y center component
     int m_r;         // ball radius
-    
-    /* TODO : improvement 
-     * Having components linked to the drawing rectangle could be avoided in the ball class,
-     * keeping only the center and the radius.
-     */
-
     float m_xSpeed; // X speed component
     float m_ySpeed; // Y speed component
-    
     bool m_launched; // ball launched from the racket or not
     bool m_placed; // ball placed on a racket or not
-    int m_initialRacketId; // racket where the ball shall be placed
+    T_RACKET_POSITION m_initialRacketId; // racket where the ball shall be placed
     
+    SDL_Renderer * m_renderer;
+    SDL_Texture * m_ballTexture; // texture of the ball (its image)
 
 };
 
